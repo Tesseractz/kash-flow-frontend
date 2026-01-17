@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent } from '../components/ui/Card'
@@ -73,17 +73,19 @@ function daysUntil(isoString) {
 }
 
 export default function Billing() {
+  const qc = useQueryClient();
   const [loading, setLoading] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
-    if (searchParams.get('success') === '1') {
-      toast.success('Subscription activated successfully!')
-    } else if (searchParams.get('canceled') === '1') {
-      toast('Checkout was canceled')
+    if (searchParams.get("success") === "1") {
+      toast.success("Subscription activated successfully!");
+      qc.invalidateQueries({ queryKey: ["plan"] });
+    } else if (searchParams.get("canceled") === "1") {
+      toast("Checkout was canceled");
     }
-  }, [searchParams])
+  }, [searchParams, qc]);
 
   const planQuery = useQuery({
     queryKey: ['plan'],
@@ -173,7 +175,9 @@ export default function Billing() {
   return (
     <div className="space-y-6">
       <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Choose Your Plan</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+          Choose Your Plan
+        </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-2">
           Start with a 7-day free trial. No credit card required to start.
         </p>
@@ -186,27 +190,31 @@ export default function Billing() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
-                    Current Plan: <span className="text-blue-600 dark:text-blue-400 capitalize">{currentPlan}</span>
+                    Current Plan:{" "}
+                    <span className="text-blue-600 dark:text-blue-400 capitalize">
+                      {currentPlan}
+                    </span>
                   </h3>
                   {periodEnd && isActive && (
                     <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                      {isTrialing ? 'Trial ends' : 'Next billing date'}: {formatDate(isTrialing ? trialEnd : periodEnd)}
+                      {isTrialing ? "Trial ends" : "Next billing date"}:{" "}
+                      {formatDate(isTrialing ? trialEnd : periodEnd)}
                     </p>
                   )}
                 </div>
                 {getStatusBadge()}
               </div>
-              
+
               <div className="flex flex-wrap gap-2">
                 {hasStripeSubscription && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={openPortal}
                     disabled={portalLoading}
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
-                    {portalLoading ? 'Loading...' : 'Manage Subscription'}
+                    {portalLoading ? "Loading..." : "Manage Subscription"}
                   </Button>
                 )}
               </div>
@@ -217,30 +225,53 @@ export default function Billing() {
                 <Package className="w-5 h-5 mx-auto text-blue-600 dark:text-blue-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
                   {usage.products || 0}
-                  {limits.max_products && <span className="text-sm font-normal text-slate-500">/{limits.max_products}</span>}
+                  {limits.max_products && (
+                    <span className="text-sm font-normal text-slate-500">
+                      /{limits.max_products}
+                    </span>
+                  )}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Products</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Products
+                </p>
               </div>
               <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                 <Users className="w-5 h-5 mx-auto text-purple-600 dark:text-purple-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
-                  1<span className="text-sm font-normal text-slate-500">/{limits.max_users || 1}</span>
+                  1
+                  <span className="text-sm font-normal text-slate-500">
+                    /{limits.max_users || 1}
+                  </span>
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Users</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Users
+                </p>
               </div>
               <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                 <FileText className="w-5 h-5 mx-auto text-emerald-600 dark:text-emerald-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
-                  {limits.csv_export ? <Check className="w-5 h-5 mx-auto text-emerald-500" /> : '—'}
+                  {limits.csv_export ? (
+                    <Check className="w-5 h-5 mx-auto text-emerald-500" />
+                  ) : (
+                    "—"
+                  )}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">CSV Export</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  CSV Export
+                </p>
               </div>
               <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                 <Bell className="w-5 h-5 mx-auto text-amber-600 dark:text-amber-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
-                  {limits.low_stock_alerts ? <Check className="w-5 h-5 mx-auto text-emerald-500" /> : '—'}
+                  {limits.low_stock_alerts ? (
+                    <Check className="w-5 h-5 mx-auto text-emerald-500" />
+                  ) : (
+                    "—"
+                  )}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Alerts</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Alerts
+                </p>
               </div>
             </div>
           </CardContent>
@@ -257,7 +288,8 @@ export default function Billing() {
                   Your subscription is not active
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  Subscribe to Pro or Business to unlock all features. Start with a 7-day free trial!
+                  Subscribe to Pro or Business to unlock all features. Start
+                  with a 7-day free trial!
                 </p>
               </div>
             </div>
@@ -267,11 +299,15 @@ export default function Billing() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 max-w-4xl mx-auto">
         {plans.map((plan) => {
-          const isCurrent = plan.planId === currentPlan && isActive
+          const isCurrent = plan.planId === currentPlan && isActive;
           return (
-            <Card 
-              key={plan.name} 
-              className={`relative ${plan.popular ? 'border-blue-600 dark:border-blue-500 border-2 shadow-lg shadow-blue-600/10' : ''} ${isCurrent ? 'ring-2 ring-emerald-500' : ''}`}
+            <Card
+              key={plan.name}
+              className={`relative ${
+                plan.popular
+                  ? "border-blue-600 dark:border-blue-500 border-2 shadow-lg shadow-blue-600/10"
+                  : ""
+              } ${isCurrent ? "ring-2 ring-emerald-500" : ""}`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -288,16 +324,26 @@ export default function Billing() {
                 </div>
               )}
               <CardContent className="p-6">
-                <div className={`w-12 h-12 ${plan.iconBg} rounded-xl flex items-center justify-center mb-4`}>
+                <div
+                  className={`w-12 h-12 ${plan.iconBg} rounded-xl flex items-center justify-center mb-4`}
+                >
                   <plan.icon className={`w-6 h-6 ${plan.iconColor}`} />
                 </div>
-                
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white">{plan.name}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{plan.description}</p>
-                
+
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                  {plan.name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {plan.description}
+                </p>
+
                 <div className="mt-4 mb-2">
-                  <span className="text-4xl font-bold text-slate-800 dark:text-white">{plan.price}</span>
-                  <span className="text-slate-500 dark:text-slate-400">{plan.period}</span>
+                  <span className="text-4xl font-bold text-slate-800 dark:text-white">
+                    {plan.price}
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {plan.period}
+                  </span>
                 </div>
                 <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4">
                   7-day free trial included
@@ -308,21 +354,30 @@ export default function Billing() {
                     Current Plan
                   </Button>
                 ) : (
-                  <Button 
-                    variant={plan.popular ? 'primary' : 'outline'}
+                  <Button
+                    variant={plan.popular ? "primary" : "outline"}
                     className="w-full"
                     onClick={() => upgrade(plan.planId)}
                     disabled={loading}
                   >
-                    {loading ? 'Processing...' : isActive ? 'Switch Plan' : 'Start Free Trial'}
+                    {loading
+                      ? "Processing..."
+                      : isActive
+                      ? "Switch Plan"
+                      : "Start Free Trial"}
                   </Button>
                 )}
 
                 <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">What's included:</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                    What's included:
+                  </p>
                   <ul className="space-y-2.5">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                      <li
+                        key={feature}
+                        className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400"
+                      >
                         <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
                         <span>{feature}</span>
                       </li>
@@ -331,20 +386,23 @@ export default function Billing() {
                 </div>
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
 
       <Card className="mt-8">
         <CardContent className="py-6 text-center">
           <p className="text-slate-600 dark:text-slate-400">
-            Need a custom plan for your enterprise? {' '}
-            <a href="mailto:support@kash-flow.com" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
+            Need a custom plan for your enterprise?{" "}
+            <a
+              href="mailto:support@kash-flow.com"
+              className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+            >
               Contact our sales team
             </a>
           </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
