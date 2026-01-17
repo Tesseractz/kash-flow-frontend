@@ -14,12 +14,12 @@ import {
   Settings,
   ChevronDown,
 } from "lucide-react";
-import { useAuth } from './context/AuthContext'
-import { useTheme } from './context/ThemeContext'
-import { Button } from './components/ui/Button'
+import { useAuth } from "./context/AuthContext";
+import { useTheme } from "./context/ThemeContext";
+import { Button } from "./components/ui/Button";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import clsx from 'clsx'
+import clsx from "clsx";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import { Logo, LogoIcon } from "./components/Logo";
 
@@ -307,7 +307,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex overflow-x-hidden">
       <div className="hidden lg:block">
         <Sidebar />
       </div>
@@ -324,12 +324,12 @@ export default function App() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
         <MobileHeader onMenuOpen={() => setMobileMenuOpen(true)} />
         <DesktopHeader />
 
-        <main className="flex-1 p-4 lg:p-8 mt-16 lg:mt-0">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 p-4 lg:p-8 mt-16 lg:mt-0 overflow-x-hidden">
+          <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>
         </main>
