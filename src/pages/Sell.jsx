@@ -4,6 +4,16 @@ import { useTranslation } from "react-i18next";
 import { ProductsAPI, SalesAPI, NotificationsAPI } from "../api/client";
 import toast from "react-hot-toast";
 import { Button } from "../components/ui/Button";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import {
+  OFFLINE_SALES_KEY,
+  PRODUCT_CACHE_KEY,
+  getOfflineSales,
+  setOfflineSales,
+  getCachedProducts,
+  setCachedProducts,
+  syncAllOffline,
+} from "../lib/offlineSync";
 import {
   Card,
   CardContent,
@@ -31,30 +41,7 @@ import {
 } from "lucide-react";
 
 const PRODUCTS_PER_PAGE = 12;
-const OFFLINE_QUEUE_KEY = "kashflow_offline_sales_v1";
-const PRODUCT_CACHE_KEY = "kashflow_product_cache_v1";
-
-const loadFromStorage = (key, fallback) => {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw);
-    return parsed ?? fallback;
-  } catch (e) {
-    console.warn("Failed to read local storage", e);
-    return fallback;
-  }
-};
-
-const saveToStorage = (key, value) => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.warn("Failed to write local storage", e);
-  }
-};
+const OFFLINE_QUEUE_KEY = OFFLINE_SALES_KEY;
 
 export default function Sell() {
   const { t } = useTranslation();
@@ -66,15 +53,11 @@ export default function Sell() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showCart, setShowCart] = useState(false);
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
-  const [offlineQueue, setOfflineQueue] = useState(() =>
-    loadFromStorage(OFFLINE_QUEUE_KEY, [])
-  );
+  const isOnline = useOnlineStatus();
+  const [offlineQueue, setOfflineQueue] = useState(() => getOfflineSales());
   const [isSyncing, setIsSyncing] = useState(false);
-  const [cachedProducts, setCachedProducts] = useState(() =>
-    loadFromStorage(PRODUCT_CACHE_KEY, [])
+  const [cachedProducts, setCachedProductsState] = useState(() =>
+    getCachedProducts()
   );
 
   // Payment state
@@ -103,60 +86,34 @@ export default function Sell() {
   });
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
-
-  useEffect(() => {
     if (productsQuery.data?.items?.length) {
+      setCachedProductsState(productsQuery.data.items);
       setCachedProducts(productsQuery.data.items);
-      saveToStorage(PRODUCT_CACHE_KEY, productsQuery.data.items);
     }
   }, [productsQuery.data?.items]);
 
   const updateOfflineQueue = (queue) => {
     setOfflineQueue(queue);
-    saveToStorage(OFFLINE_QUEUE_KEY, queue);
+    setOfflineSales(queue);
   };
 
   const syncOfflineSales = async (source = "auto") => {
     if (!isOnline || isSyncing || offlineQueue.length === 0) return;
     setIsSyncing(true);
-    const queue = [...offlineQueue];
-    const remaining = [];
-    let syncedCount = 0;
-
-    for (const sale of queue) {
-      try {
-        await Promise.all(
-          sale.items.map((item) =>
-            SalesAPI.create({
-              product_id: item.product_id,
-              quantity_sold: item.quantity,
-            })
-          )
-        );
-        syncedCount += 1;
-      } catch (e) {
-        remaining.push(sale);
-      }
-    }
-
-    updateOfflineQueue(remaining);
+    const result = await syncAllOffline({ ProductsAPI, SalesAPI });
+    updateOfflineQueue(getOfflineSales());
     setIsSyncing(false);
 
-    if (syncedCount > 0) {
+    if (result.salesSynced > 0 || result.productsSynced > 0) {
       qc.invalidateQueries({ queryKey: ["products-for-sale"] });
       qc.invalidateQueries({ queryKey: ["recent-sales"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       toast.success(
-        `Synced ${syncedCount} offline sale${syncedCount > 1 ? "s" : ""}`
+        `Synced ${result.salesSynced} sale${
+          result.salesSynced > 1 ? "s" : ""
+        } and ${result.productsSynced} product change${
+          result.productsSynced > 1 ? "s" : ""
+        }`
       );
     }
   };
@@ -308,6 +265,16 @@ export default function Sell() {
       };
 
       updateOfflineQueue([...offlineQueue, offlineSale]);
+      const updatedProducts = cachedProducts.map((product) => {
+        const sold = offlineSale.items.find(
+          (item) => item.product_id === product.id
+        );
+        if (!sold) return product;
+        const nextQty = Math.max(0, (product.quantity || 0) - sold.quantity);
+        return { ...product, quantity: nextQty };
+      });
+      setCachedProductsState(updatedProducts);
+      setCachedProducts(updatedProducts);
       toast.success("Sale saved offline. Will sync when online.");
 
       setReceiptModal({

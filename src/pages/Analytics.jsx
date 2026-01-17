@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnalyticsAPI, PlanAPI } from '../api/client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import {
@@ -17,28 +17,46 @@ import {
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { loadFromStorage, saveToStorage } from "../lib/offlineStorage";
+
+const ANALYTICS_CACHE_KEY = "kashflow_analytics_cache_v1";
 
 export default function Analytics() {
   const [days, setDays] = useState(30);
+  const isOnline = useOnlineStatus();
+  const [cachedAnalytics, setCachedAnalytics] = useState(() =>
+    loadFromStorage(ANALYTICS_CACHE_KEY, {})
+  );
 
   const planQuery = useQuery({
     queryKey: ["plan"],
     queryFn: () => PlanAPI.get(),
     staleTime: 60000,
+    enabled: isOnline,
   });
 
   // Use !! to convert truthy values to boolean
   const canView = !!planQuery.data?.limits?.advanced_reports;
+  const canUseCached = !isOnline && !!cachedAnalytics[days];
 
   const analyticsQuery = useQuery({
     queryKey: ["analytics", days],
     queryFn: () => AnalyticsAPI.get(days),
     staleTime: 30000, // Refresh more often
-    enabled: canView, // Now properly boolean
+    enabled: canView && isOnline, // Now properly boolean
     retry: 2,
   });
 
-  if (planQuery.isLoading) {
+  useEffect(() => {
+    if (analyticsQuery.data) {
+      const next = { ...cachedAnalytics, [days]: analyticsQuery.data };
+      setCachedAnalytics(next);
+      saveToStorage(ANALYTICS_CACHE_KEY, next);
+    }
+  }, [analyticsQuery.data, days]);
+
+  if (planQuery.isLoading && isOnline) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -46,7 +64,7 @@ export default function Analytics() {
     );
   }
 
-  if (!canView) {
+  if (!canView && !canUseCached) {
     return (
       <div className="space-y-6">
         <div>
@@ -78,9 +96,10 @@ export default function Analytics() {
     );
   }
 
-  const data = analyticsQuery.data || {};
-  const isLoading = analyticsQuery.isLoading;
-  const isError = analyticsQuery.isError;
+  const data = analyticsQuery.data || cachedAnalytics[days] || {};
+  const usingCached = !analyticsQuery.data && !!cachedAnalytics[days];
+  const isLoading = analyticsQuery.isLoading && !usingCached;
+  const isError = analyticsQuery.isError && !usingCached;
   const refetch = analyticsQuery.refetch;
 
   return (
@@ -113,14 +132,34 @@ export default function Analytics() {
             variant="secondary"
             size="sm"
             onClick={() => refetch()}
-            disabled={isLoading}
+            disabled={isLoading || !isOnline}
           >
             <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
           </Button>
         </div>
       </div>
 
-      {isError ? (
+      {usingCached && (
+        <Card className="border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+          <CardContent className="py-4 text-sm text-slate-600 dark:text-slate-300">
+            Showing cached analytics. Connect to refresh.
+          </CardContent>
+        </Card>
+      )}
+
+      {!isOnline && !usingCached ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
+            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">
+              Offline
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-4">
+              Connect to the internet to load analytics.
+            </p>
+          </CardContent>
+        </Card>
+      ) : isError ? (
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />

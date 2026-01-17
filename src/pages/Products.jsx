@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ProductsAPI, AlertsAPI, PlanAPI } from '../api/client'
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,7 @@ import {
   CardTitle,
   CardDescription,
 } from "../components/ui/Card";
-import { Dialog } from '../components/ui/Dialog'
+import { Dialog } from "../components/ui/Dialog";
 import ImageUpload from "../components/ImageUpload";
 import {
   Package,
@@ -25,6 +25,16 @@ import {
   AlertTriangle,
   Lock,
 } from "lucide-react";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import {
+  getCachedProducts,
+  setCachedProducts,
+  getProductOps,
+  setProductOps,
+  syncProductOps,
+} from "../lib/offlineSync";
+
+const TEMP_ID_PREFIX = "temp-";
 
 function formatZAR(value) {
   try {
@@ -40,11 +50,16 @@ function formatZAR(value) {
 
 export default function Products() {
   const qc = useQueryClient();
+  const isOnline = useOnlineStatus();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showAddForm, setShowAddForm] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
+  const [cachedProducts, setCachedProductsState] = useState(() =>
+    getCachedProducts()
+  );
+  const [productOps, setProductOpsState] = useState(() => getProductOps());
   const productsKey = ["products", { q: search || undefined, page, pageSize }];
 
   const productsQuery = useQuery({
@@ -52,22 +67,127 @@ export default function Products() {
     queryFn: () =>
       ProductsAPI.list({ q: search || undefined, page, page_size: pageSize }),
     keepPreviousData: true,
+    enabled: isOnline,
   });
 
   const planQuery = useQuery({
     queryKey: ["plan"],
     queryFn: () => PlanAPI.get(),
     staleTime: 60000,
+    enabled: isOnline,
   });
 
   const lowStockQuery = useQuery({
     queryKey: ["lowStock"],
     queryFn: () => AlertsAPI.getLowStock(10),
-    enabled: planQuery.data?.limits?.low_stock_alerts === true,
+    enabled: isOnline && planQuery.data?.limits?.low_stock_alerts === true,
     staleTime: 30000,
   });
 
   const canViewAlerts = planQuery.data?.limits?.low_stock_alerts;
+
+  useEffect(() => {
+    if (productsQuery.data?.items?.length) {
+      setCachedProductsState(productsQuery.data.items);
+      setCachedProducts(productsQuery.data.items);
+    }
+  }, [productsQuery.data?.items]);
+
+  const updateProductOps = (ops) => {
+    setProductOpsState(ops);
+    setProductOps(ops);
+  };
+
+  const updateCachedProducts = (next) => {
+    setCachedProductsState(next);
+    setCachedProducts(next);
+  };
+
+  const applyLocalUpdate = (id, data) => {
+    updateCachedProducts(
+      cachedProducts.map((product) =>
+        product.id === id ? { ...product, ...data } : product
+      )
+    );
+  };
+
+  const applyLocalDelete = (id) => {
+    updateCachedProducts(cachedProducts.filter((product) => product.id !== id));
+  };
+
+  const enqueueCreate = (data) => {
+    const tempId = `${TEMP_ID_PREFIX}${Date.now()}-${Math.random()
+      .toString(16)
+      .slice(2)}`;
+    const newProduct = {
+      id: tempId,
+      ...data,
+      image_url: imageUrl || undefined,
+      quantity: Number(data.quantity || 0),
+      price: Number(data.price || 0),
+      cost_price: Number(data.cost_price || 0),
+    };
+    updateCachedProducts([newProduct, ...cachedProducts]);
+    updateProductOps([
+      ...productOps,
+      { type: "create", tempId, data: newProduct },
+    ]);
+    return tempId;
+  };
+
+  const enqueueUpdate = (id, data) => {
+    const nextOps = productOps.map((op) => {
+      if (op.type === "create" && op.tempId === id) {
+        return { ...op, data: { ...op.data, ...data } };
+      }
+      if (op.type === "update" && op.id === id) {
+        return { ...op, data: { ...op.data, ...data } };
+      }
+      return op;
+    });
+    const hasExisting = nextOps.some(
+      (op) =>
+        (op.type === "create" && op.tempId === id) ||
+        (op.type === "update" && op.id === id)
+    );
+    if (!hasExisting) {
+      nextOps.push({ type: "update", id, data });
+    }
+    updateProductOps(nextOps);
+  };
+
+  const enqueueDelete = (id) => {
+    const nextOps = productOps.filter(
+      (op) =>
+        !(op.type === "update" && op.id === id) &&
+        !(op.type === "create" && op.tempId === id)
+    );
+    if (!(typeof id === "string" && id.startsWith(TEMP_ID_PREFIX))) {
+      nextOps.push({ type: "delete", id });
+    }
+    updateProductOps(nextOps);
+  };
+
+  const syncOfflineChanges = async () => {
+    if (!isOnline || !hasPendingProductOps) return;
+    const result = await syncProductOps(ProductsAPI);
+    setCachedProductsState(getCachedProducts());
+    setProductOpsState(getProductOps());
+    if (result.productsSynced > 0) {
+      qc.invalidateQueries({ queryKey: ["products"] });
+      toast.success(
+        `Synced ${result.productsSynced} product change${
+          result.productsSynced > 1 ? "s" : ""
+        }`
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (isOnline && hasPendingProductOps) {
+      syncOfflineChanges();
+    }
+  }, [isOnline, hasPendingProductOps]);
 
   const createMutation = useMutation({
     mutationFn: ProductsAPI.create,
@@ -127,10 +247,21 @@ export default function Products() {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  const products = productsQuery.data?.items || [];
-  const total = productsQuery.data?.total || 0;
+  const products = productsQuery.data?.items || cachedProducts || [];
+  const total = productsQuery.data?.total || products.length || 0;
+  const usingCachedProducts =
+    !productsQuery.data?.items && cachedProducts && cachedProducts.length > 0;
+  const hasPendingProductOps = productOps.length > 0;
 
   const handleSubmit = (values) => {
+    if (!isOnline) {
+      enqueueCreate({ ...values, image_url: imageUrl || undefined });
+      toast.success("Product saved offline.");
+      form.reset();
+      setImageUrl("");
+      setShowAddForm(false);
+      return;
+    }
     createMutation.mutate({
       ...values,
       image_url: imageUrl || undefined,
@@ -148,11 +279,82 @@ export default function Products() {
             Manage your product inventory
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(!showAddForm)}>
+        <Button
+          onClick={() => {
+            if (!isOnline) {
+              toast("Offline: product will be saved locally.");
+            }
+            setShowAddForm(!showAddForm);
+          }}
+        >
           <Plus size={18} />
           Add Product
         </Button>
       </div>
+
+      {!isOnline && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-amber-800 dark:text-amber-300">
+                  Offline mode
+                </h3>
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                  You can still add, edit, and delete products while offline.
+                  Changes will sync when you’re back online.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {!isOnline && !usingCachedProducts && (
+        <Card className="border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+          <CardContent className="py-4 text-sm text-slate-600 dark:text-slate-300">
+            No cached products available. Connect to load inventory.
+          </CardContent>
+        </Card>
+      )}
+      {isOnline && hasPendingProductOps && (
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+          <CardContent className="py-4 text-sm text-blue-700 dark:text-blue-300 flex items-center justify-between gap-3">
+            <span>
+              {productOps.length} product change
+              {productOps.length > 1 ? "s" : ""} pending sync.
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => syncOfflineChanges()}
+            >
+              Sync now
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {isOnline && usingCachedProducts && (
+        <Card className="border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+              </div>
+              <div>
+                <h3 className="font-medium text-slate-700 dark:text-slate-300">
+                  Using cached products
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Live data failed to load. Showing last saved inventory.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {canViewAlerts && lowStockQuery.data && lowStockQuery.data.length > 0 && (
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
@@ -449,8 +651,15 @@ export default function Products() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            if (confirm(`Delete "${p.name}"?`))
-                              deleteMutation.mutate(p.id);
+                            if (confirm(`Delete "${p.name}"?`)) {
+                              if (!isOnline) {
+                                enqueueDelete(p.id);
+                                applyLocalDelete(p.id);
+                                toast.success("Product deleted offline.");
+                              } else {
+                                deleteMutation.mutate(p.id);
+                              }
+                            }
                           }}
                           className="text-red-600"
                         >
@@ -556,8 +765,15 @@ export default function Products() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                if (confirm(`Delete "${p.name}"?`))
-                                  deleteMutation.mutate(p.id);
+                                if (confirm(`Delete "${p.name}"?`)) {
+                                  if (!isOnline) {
+                                    enqueueDelete(p.id);
+                                    applyLocalDelete(p.id);
+                                    toast.success("Product deleted offline.");
+                                  } else {
+                                    deleteMutation.mutate(p.id);
+                                  }
+                                }
                               }}
                               className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                             >
@@ -609,7 +825,16 @@ export default function Products() {
         open={editOpen}
         product={editing}
         onClose={() => setEditOpen(false)}
-        onSave={(id, data) => updateMutation.mutate({ id, data })}
+        onSave={(id, data) => {
+          if (!isOnline) {
+            enqueueUpdate(id, data);
+            applyLocalUpdate(id, data);
+            setEditOpen(false);
+            toast.success("Product updated offline.");
+            return;
+          }
+          updateMutation.mutate({ id, data });
+        }}
       />
     </div>
   );

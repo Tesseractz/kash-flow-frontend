@@ -1,30 +1,52 @@
 import { useQuery } from '@tanstack/react-query'
 import { ReportsAPI, PlanAPI } from '../api/client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { TrendingUp, DollarSign, ShoppingBag, Calendar, ArrowUp, Download, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { loadFromStorage, saveToStorage } from "../lib/offlineStorage";
+
+const REPORT_CACHE_KEY = "kashflow_reports_cache_v1";
 
 export default function Reports() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [exporting, setExporting] = useState(false)
+  const isOnline = useOnlineStatus();
+  const [cachedReports, setCachedReports] = useState(() =>
+    loadFromStorage(REPORT_CACHE_KEY, {})
+  );
 
   const reportQuery = useQuery({
     queryKey: ['reports', date],
     queryFn: () => ReportsAPI.get(date),
     staleTime: 30000,
+    enabled: isOnline,
   })
 
   const planQuery = useQuery({
     queryKey: ['plan'],
     queryFn: () => PlanAPI.get(),
     staleTime: 60000,
+    enabled: isOnline,
   })
 
   const canExport = planQuery.data?.limits?.csv_export
 
+  useEffect(() => {
+    if (reportQuery.data) {
+      const next = { ...cachedReports, [date]: reportQuery.data };
+      setCachedReports(next);
+      saveToStorage(REPORT_CACHE_KEY, next);
+    }
+  }, [reportQuery.data, date]);
+
   const handleExport = async () => {
+    if (!isOnline) {
+      toast.error('You are offline. Connect to export reports.');
+      return
+    }
     if (!canExport) {
       toast.error('CSV export requires Pro or Business plan')
       return
@@ -49,8 +71,10 @@ export default function Reports() {
     }
   }
 
-  const totals = reportQuery.data?.totals || {}
-  const transactions = reportQuery.data?.transactions || []
+  const reportData = reportQuery.data || cachedReports[date]
+  const usingCachedReport = !reportQuery.data && !!cachedReports[date]
+  const totals = reportData?.totals || {}
+  const transactions = reportData?.transactions || []
 
   return (
     <div className="space-y-6">
@@ -75,7 +99,7 @@ export default function Reports() {
           <Button
             variant={canExport ? 'secondary' : 'ghost'}
             onClick={handleExport}
-            disabled={exporting || reportQuery.isLoading}
+            disabled={exporting || reportQuery.isLoading || !isOnline}
             className="flex items-center gap-2"
           >
             {canExport ? <Download size={16} /> : <Lock size={16} />}
@@ -85,13 +109,21 @@ export default function Reports() {
         </div>
       </div>
 
-      {reportQuery.isLoading ? (
+      {!isOnline && !usingCachedReport ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-amber-700 dark:text-amber-400">
+              Offline. Connect to load reports.
+            </p>
+          </CardContent>
+        </Card>
+      ) : reportQuery.isLoading && !usingCachedReport ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1,2,3].map(i => (
             <div key={i} className="h-32 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : reportQuery.isError ? (
+      ) : reportQuery.isError && !usingCachedReport ? (
         <Card>
           <CardContent className="py-8 text-center">
             <p className="text-red-600 dark:text-red-400">Failed to load report. Please try again.</p>
@@ -99,6 +131,13 @@ export default function Reports() {
         </Card>
       ) : (
         <>
+          {usingCachedReport && (
+            <Card className="border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+              <CardContent className="py-4 text-sm text-slate-600 dark:text-slate-300">
+                Showing cached report data. Connect to refresh.
+              </CardContent>
+            </Card>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
               <CardContent className="py-5">
