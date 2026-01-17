@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ProductsAPI, SalesAPI, NotificationsAPI } from "../api/client";
@@ -31,6 +31,30 @@ import {
 } from "lucide-react";
 
 const PRODUCTS_PER_PAGE = 12;
+const OFFLINE_QUEUE_KEY = "kashflow_offline_sales_v1";
+const PRODUCT_CACHE_KEY = "kashflow_product_cache_v1";
+
+const loadFromStorage = (key, fallback) => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch (e) {
+    console.warn("Failed to read local storage", e);
+    return fallback;
+  }
+};
+
+const saveToStorage = (key, value) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn("Failed to write local storage", e);
+  }
+};
 
 export default function Sell() {
   const { t } = useTranslation();
@@ -42,6 +66,16 @@ export default function Sell() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showCart, setShowCart] = useState(false);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+  const [offlineQueue, setOfflineQueue] = useState(() =>
+    loadFromStorage(OFFLINE_QUEUE_KEY, [])
+  );
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [cachedProducts, setCachedProducts] = useState(() =>
+    loadFromStorage(PRODUCT_CACHE_KEY, [])
+  );
 
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -56,6 +90,7 @@ export default function Sell() {
     paymentMethod: "cash",
     paymentAmount: 0,
     change: 0,
+    offline: false,
   });
   const [receiptEmail, setReceiptEmail] = useState("");
   const [sendingReceipt, setSendingReceipt] = useState(false);
@@ -67,8 +102,75 @@ export default function Sell() {
     refetchOnWindowFocus: false,
   });
 
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (productsQuery.data?.items?.length) {
+      setCachedProducts(productsQuery.data.items);
+      saveToStorage(PRODUCT_CACHE_KEY, productsQuery.data.items);
+    }
+  }, [productsQuery.data?.items]);
+
+  const updateOfflineQueue = (queue) => {
+    setOfflineQueue(queue);
+    saveToStorage(OFFLINE_QUEUE_KEY, queue);
+  };
+
+  const syncOfflineSales = async (source = "auto") => {
+    if (!isOnline || isSyncing || offlineQueue.length === 0) return;
+    setIsSyncing(true);
+    const queue = [...offlineQueue];
+    const remaining = [];
+    let syncedCount = 0;
+
+    for (const sale of queue) {
+      try {
+        await Promise.all(
+          sale.items.map((item) =>
+            SalesAPI.create({
+              product_id: item.product_id,
+              quantity_sold: item.quantity,
+            })
+          )
+        );
+        syncedCount += 1;
+      } catch (e) {
+        remaining.push(sale);
+      }
+    }
+
+    updateOfflineQueue(remaining);
+    setIsSyncing(false);
+
+    if (syncedCount > 0) {
+      qc.invalidateQueries({ queryKey: ["products-for-sale"] });
+      qc.invalidateQueries({ queryKey: ["recent-sales"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
+      toast.success(
+        `Synced ${syncedCount} offline sale${syncedCount > 1 ? "s" : ""}`
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (isOnline && offlineQueue.length > 0) {
+      syncOfflineSales("auto");
+    }
+  }, [isOnline, offlineQueue.length]);
+
   // Filter and paginate products
-  const allProducts = productsQuery.data?.items || [];
+  const allProducts = productsQuery.data?.items || cachedProducts || [];
+  const usingCachedProducts =
+    !productsQuery.data?.items && cachedProducts && cachedProducts.length > 0;
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return allProducts;
@@ -185,6 +287,45 @@ export default function Sell() {
       return;
     }
 
+    if (!isOnline) {
+      const offlineSale = {
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `offline-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        createdAt: new Date().toISOString(),
+        paymentMethod,
+        paymentAmount: paymentMethod === "cash" ? paymentAmountNum : cartTotal,
+        change,
+        total: cartTotal,
+        items: cart.map((item) => ({
+          product_id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+          subtotal: item.product.price * item.quantity,
+        })),
+      };
+
+      updateOfflineQueue([...offlineQueue, offlineSale]);
+      toast.success("Sale saved offline. Will sync when online.");
+
+      setReceiptModal({
+        open: true,
+        saleIds: [],
+        total: cartTotal,
+        items: offlineSale.items,
+        paymentMethod: paymentMethod,
+        paymentAmount: offlineSale.paymentAmount,
+        change: offlineSale.change,
+        offline: true,
+      });
+
+      clearCart();
+      setShowCart(false);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -213,6 +354,7 @@ export default function Sell() {
         paymentMethod: paymentMethod,
         paymentAmount: paymentMethod === "cash" ? paymentAmountNum : cartTotal,
         change: change,
+        offline: false,
       });
 
       clearCart();
@@ -232,6 +374,10 @@ export default function Sell() {
 
   const handleSendReceipt = async () => {
     if (receiptModal.saleIds.length === 0) return;
+    if (!isOnline || receiptModal.offline) {
+      toast.error("Receipts can be sent when you are back online");
+      return;
+    }
 
     const email = receiptEmail.trim();
     if (!email) {
@@ -280,6 +426,7 @@ export default function Sell() {
       paymentMethod: "cash",
       paymentAmount: 0,
       change: 0,
+      offline: false,
     });
     setReceiptEmail("");
   };
@@ -289,6 +436,8 @@ export default function Sell() {
     const item = cart.find((i) => i.product.id === productId);
     return item?.quantity || 0;
   };
+  const hasPendingOfflineSales = offlineQueue.length > 0;
+  const canSendReceipt = isOnline && !receiptModal.offline;
 
   return (
     <div className="min-h-[calc(100vh-8rem)]">
@@ -346,6 +495,35 @@ export default function Sell() {
                     </CardDescription>
                   </div>
                 </div>
+                {!isOnline && (
+                  <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                    <AlertCircle className="h-4 w-4" />
+                    Offline mode: sales will be saved and synced later.
+                  </div>
+                )}
+                {isOnline && usingCachedProducts && (
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    <AlertCircle className="h-4 w-4" />
+                    Using cached products. Data may be outdated.
+                  </div>
+                )}
+                {isOnline && hasPendingOfflineSales && (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      {offlineQueue.length} offline sale
+                      {offlineQueue.length > 1 ? "s" : ""} pending sync.
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => syncOfflineSales("manual")}
+                      disabled={isSyncing}
+                    >
+                      {isSyncing ? "Syncing..." : "Sync now"}
+                    </Button>
+                  </div>
+                )}
                 {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -360,7 +538,7 @@ export default function Sell() {
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto pb-4">
-              {productsQuery.isLoading ? (
+              {productsQuery.isLoading && !usingCachedProducts ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                     <div
@@ -531,6 +709,11 @@ export default function Sell() {
               <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
                 Sale Complete!
               </h3>
+              {receiptModal.offline && (
+                <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+                  Saved offline. Sync to update inventory.
+                </p>
+              )}
             </div>
 
             {/* Receipt Details */}
@@ -601,6 +784,11 @@ export default function Sell() {
               <p className="text-sm text-slate-600 dark:text-slate-300 text-center">
                 Send receipt to customer (optional)
               </p>
+              {!canSendReceipt && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                  Receipts can be sent when you are back online.
+                </p>
+              )}
 
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -624,7 +812,9 @@ export default function Sell() {
                 <Button
                   className="flex-1"
                   onClick={handleSendReceipt}
-                  disabled={sendingReceipt || !receiptEmail.trim()}
+                  disabled={
+                    sendingReceipt || !receiptEmail.trim() || !canSendReceipt
+                  }
                 >
                   <Send size={16} />
                   {sendingReceipt ? "..." : "Send"}
