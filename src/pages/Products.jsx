@@ -60,6 +60,7 @@ export default function Products() {
     getCachedProducts()
   );
   const [productOps, setProductOpsState] = useState(() => getProductOps());
+  const hasPendingProductOps = productOps.length > 0;
   const productsKey = ["products", { q: search || undefined, page, pageSize }];
 
   const productsQuery = useQuery({
@@ -251,7 +252,6 @@ export default function Products() {
   const total = productsQuery.data?.total || products.length || 0;
   const usingCachedProducts =
     !productsQuery.data?.items && cachedProducts && cachedProducts.length > 0;
-  const hasPendingProductOps = productOps.length > 0;
 
   const handleSubmit = (values) => {
     if (!isOnline) {
