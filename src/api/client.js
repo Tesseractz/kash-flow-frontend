@@ -83,10 +83,16 @@ export const AnalyticsAPI = {
 }
 
 export const NotificationsAPI = {
-  status: () => api.get('/notifications/status').then(r => r.data),
-  sendLowStockAlert: (data) => api.post('/notifications/low-stock', data).then(r => r.data),
-  sendReceipt: (data) => api.post('/receipts/send', data).then(r => r.data),
-}
+  status: () => api.get("/notifications/status").then((r) => r.data),
+  sendLowStockAlert: (data) =>
+    api.post("/notifications/low-stock", data).then((r) => r.data),
+  sendDailySummary: (data) =>
+    api.post("/notifications/daily-summary", data).then((r) => r.data),
+  getSettings: () => api.get("/notifications/settings").then((r) => r.data),
+  updateSettings: (data) =>
+    api.put("/notifications/settings", data).then((r) => r.data),
+  sendReceipt: (data) => api.post("/receipts/send", data).then((r) => r.data),
+};
 
 // Dev instrumentation: log request durations to help diagnose slowness
 if (import.meta.env.DEV) {

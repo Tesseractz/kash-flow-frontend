@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -7,7 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/Card";
-import { PlanAPI, BillingAPI } from "../api/client";
+import { PlanAPI, BillingAPI, NotificationsAPI } from "../api/client";
 import toast from "react-hot-toast";
 import {
   User,
@@ -56,10 +56,27 @@ export default function Profile() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
 
+  // Notification settings
+  const [notificationEmail, setNotificationEmail] = useState("");
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
+  const [dailySummaryEnabled, setDailySummaryEnabled] = useState(false);
+
   // Get subscription info
   const planQuery = useQuery({
     queryKey: ["plan"],
     queryFn: () => PlanAPI.get(),
+    staleTime: 30000,
+  });
+
+  const notificationSettingsQuery = useQuery({
+    queryKey: ["notification-settings"],
+    queryFn: () => NotificationsAPI.getSettings(),
+    staleTime: 30000,
+  });
+
+  const notificationStatusQuery = useQuery({
+    queryKey: ["notification-status"],
+    queryFn: () => NotificationsAPI.status(),
     staleTime: 30000,
   });
 
@@ -69,6 +86,19 @@ export default function Profile() {
   const hasStripeSubscription = planQuery.data?.has_stripe_subscription;
   const trialEnd = planQuery.data?.trial_end;
   const periodEnd = planQuery.data?.current_period_end;
+  const emailConfigured = notificationStatusQuery.data?.email_configured;
+  const emailReady = !!notificationEmail && !!emailConfigured;
+
+  useEffect(() => {
+    if (!notificationSettingsQuery.data) return;
+    setNotificationEmail(notificationSettingsQuery.data.notification_email || "");
+    setLowStockThreshold(
+      Number(notificationSettingsQuery.data.low_stock_threshold ?? 10)
+    );
+    setDailySummaryEnabled(
+      !!notificationSettingsQuery.data.daily_summary_enabled
+    );
+  }, [notificationSettingsQuery.data]);
 
   const formatDate = (isoString) => {
     if (!isoString) return null;
@@ -163,6 +193,48 @@ export default function Profile() {
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
+  };
+
+  const saveNotificationsMutation = useMutation({
+    mutationFn: (payload) => NotificationsAPI.updateSettings(payload),
+    onSuccess: () => {
+      toast.success("Notification settings updated");
+      queryClient.invalidateQueries({ queryKey: ["notification-settings"] });
+    },
+    onError: (e) => {
+      toast.error(e?.response?.data?.detail || "Failed to save settings");
+    },
+  });
+
+  const sendDailySummaryMutation = useMutation({
+    mutationFn: (payload) => NotificationsAPI.sendDailySummary(payload),
+    onSuccess: () => {
+      toast.success("Daily summary sent");
+    },
+    onError: (e) => {
+      toast.error(e?.response?.data?.detail || "Failed to send summary");
+    },
+  });
+
+  const sendLowStockMutation = useMutation({
+    mutationFn: (payload) => NotificationsAPI.sendLowStockAlert(payload),
+    onSuccess: () => {
+      toast.success("Low stock alert sent");
+    },
+    onError: (e) => {
+      toast.error(e?.response?.data?.detail || "Failed to send low stock alert");
+    },
+  });
+
+  const handleSaveNotifications = () => {
+    const threshold = Number.isFinite(Number(lowStockThreshold))
+      ? Math.max(1, Number(lowStockThreshold))
+      : 10;
+    saveNotificationsMutation.mutate({
+      notification_email: notificationEmail || null,
+      low_stock_threshold: threshold,
+      daily_summary_enabled: !!dailySummaryEnabled,
+    });
   };
 
   const getStatusBadge = () => {
@@ -397,6 +469,112 @@ export default function Profile() {
                 </Button>
               </div>
             </form>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Notifications Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            Notifications
+          </CardTitle>
+          <CardDescription>
+            Low stock alerts and daily finance summaries
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              Notification Email
+            </label>
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={notificationEmail}
+              onChange={(e) => setNotificationEmail(e.target.value)}
+              className="mt-2 w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
+            />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                Low Stock Threshold
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={lowStockThreshold}
+                onChange={(e) => setLowStockThreshold(e.target.value)}
+                className="mt-2 w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Notify when stock is at or below this number
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                id="daily-summary-toggle"
+                type="checkbox"
+                checked={dailySummaryEnabled}
+                onChange={(e) => setDailySummaryEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="daily-summary-toggle"
+                className="text-sm text-slate-700 dark:text-slate-200"
+              >
+                Enable daily summary emails
+              </label>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={handleSaveNotifications}
+              disabled={saveNotificationsMutation.isLoading}
+            >
+              {saveNotificationsMutation.isLoading ? "Saving..." : "Save Settings"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                sendDailySummaryMutation.mutate({
+                  date_utc: new Date().toISOString().slice(0, 10),
+                  email: notificationEmail,
+                  send_email: true,
+                })
+              }
+              disabled={!emailReady || sendDailySummaryMutation.isLoading}
+            >
+              Email daily summary now
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                sendLowStockMutation.mutate({
+                  threshold: Number(lowStockThreshold) || 10,
+                  email: notificationEmail,
+                  send_email: true,
+                })
+              }
+              disabled={!emailReady || sendLowStockMutation.isLoading}
+            >
+              Email low stock now
+            </Button>
+          </div>
+
+          {!emailConfigured && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Email delivery not configured. Set BREVO_API_KEY and
+              BREVO_SENDER_EMAIL on the backend to enable emails.
+            </p>
           )}
         </CardContent>
       </Card>

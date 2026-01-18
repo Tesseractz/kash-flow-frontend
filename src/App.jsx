@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import { Logo, LogoIcon } from "./components/Logo";
+import NotificationsBell from "./components/NotificationsBell";
 
 const navItems = [
   { to: "/", icon: Package, labelKey: "nav.products" },
@@ -246,6 +247,7 @@ function MobileSidebarFooter({ onClose }) {
 function DesktopHeader() {
   return (
     <header className="hidden lg:flex h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 items-center justify-end gap-3">
+      <NotificationsBell />
       <LanguageSwitcher compact />
       <ThemeToggle compact />
       <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
@@ -261,6 +263,7 @@ function MobileHeader({ onMenuOpen }) {
     <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 flex items-center justify-between">
       <Logo size={32} />
       <div className="flex items-center gap-1">
+        <NotificationsBell />
         <LanguageSwitcher compact />
         <button
           onClick={toggleTheme}
