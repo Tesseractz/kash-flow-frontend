@@ -77,10 +77,10 @@ export default function Reports() {
   const transactions = reportData?.transactions || []
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Sales Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">Sales Reports</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">View your daily sales performance</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -90,7 +90,7 @@ export default function Reports() {
             </div>
             <input
               type="date"
-              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none w-full sm:w-auto"
+              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 sm:py-2 text-sm sm:text-base text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none w-full sm:w-auto"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               aria-label="Select date"
@@ -100,6 +100,7 @@ export default function Reports() {
             variant={canExport ? 'secondary' : 'ghost'}
             onClick={handleExport}
             disabled={exporting || reportQuery.isLoading || !isOnline}
+            size="sm"
             className="flex items-center gap-2"
           >
             {canExport ? <Download size={16} /> : <Lock size={16} />}

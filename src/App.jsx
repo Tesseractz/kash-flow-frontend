@@ -20,13 +20,12 @@ import { Button } from "./components/ui/Button";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import clsx from "clsx";
-import LanguageSwitcher from "./components/LanguageSwitcher";
 import { Logo, LogoIcon } from "./components/Logo";
 import NotificationsBell from "./components/NotificationsBell";
 
 const navItems = [
-  { to: "/", icon: Package, labelKey: "nav.products" },
   { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell" },
+  { to: "/products", icon: Package, labelKey: "nav.products" },
   { to: "/reports", icon: BarChart3, labelKey: "nav.reports" },
   { to: "/analytics", icon: PieChart, labelKey: "nav.analytics" },
   { to: "/billing", icon: CreditCard, labelKey: "nav.billing" },
@@ -248,7 +247,6 @@ function DesktopHeader() {
   return (
     <header className="hidden lg:flex h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 items-center justify-end gap-3">
       <NotificationsBell />
-      <LanguageSwitcher compact />
       <ThemeToggle compact />
       <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
       <UserDropdown />
@@ -264,7 +262,6 @@ function MobileHeader({ onMenuOpen }) {
       <Logo size={32} />
       <div className="flex items-center gap-1">
         <NotificationsBell />
-        <LanguageSwitcher compact />
         <button
           onClick={toggleTheme}
           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300"
@@ -331,7 +328,7 @@ export default function App() {
         <MobileHeader onMenuOpen={() => setMobileMenuOpen(true)} />
         <DesktopHeader />
 
-        <main className="flex-1 p-4 lg:p-8 mt-16 lg:mt-0 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 mt-16 lg:mt-0 overflow-x-hidden">
           <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>

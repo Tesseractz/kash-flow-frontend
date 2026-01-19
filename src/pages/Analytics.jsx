@@ -103,10 +103,10 @@ export default function Analytics() {
   const refetch = analyticsQuery.refetch;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
             Analytics
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -118,7 +118,7 @@ export default function Analytics() {
             Period:
           </span>
           <select
-            className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+            className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 sm:py-2 text-sm sm:text-base text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
           >

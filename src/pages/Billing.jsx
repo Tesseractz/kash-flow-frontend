@@ -173,19 +173,19 @@ export default function Billing() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
           Choose Your Plan
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2">
+        <p className="text-slate-500 dark:text-slate-400 mt-1 sm:mt-2">
           Start with a 7-day free trial. No credit card required to start.
         </p>
       </div>
 
       {planQuery.data && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
-          <CardContent className="py-6">
+          <CardContent className="py-4 sm:py-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div>

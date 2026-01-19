@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ProductsAPI, AlertsAPI, PlanAPI } from '../api/client'
+import { Link } from "react-router-dom";
+import { ProductsAPI, AlertsAPI, PlanAPI } from "../api/client";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -269,10 +270,10 @@ export default function Products() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
             Products
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -280,6 +281,7 @@ export default function Products() {
           </p>
         </div>
         <Button
+          size="sm"
           onClick={() => {
             if (!isOnline) {
               toast("Offline: product will be saved locally.");
@@ -291,6 +293,24 @@ export default function Products() {
           Add Product
         </Button>
       </div>
+
+      <Card className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-800 dark:text-white">
+              Ready to sell?
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Jump straight into the Sell screen to process a transaction.
+            </p>
+          </div>
+          <Link to="/sell">
+            <Button variant="primary" size="sm">
+              Go to Sell
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       {!isOnline && (
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
@@ -532,13 +552,13 @@ export default function Products() {
       )}
 
       <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
               <CardTitle>Inventory</CardTitle>
               <CardDescription>{total} products in your store</CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               <div className="relative">
                 <Search
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -551,11 +571,11 @@ export default function Products() {
                     setPage(1);
                     setSearch(e.target.value);
                   }}
-                  className="w-full sm:w-64 pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  className="w-full sm:w-64 pl-10 pr-4 py-2.5 sm:py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm sm:text-base text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
                 />
               </div>
               <select
-                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white px-3 py-2 focus:border-blue-500 outline-none"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm sm:text-base text-slate-800 dark:text-white px-3 py-2.5 sm:py-2 focus:border-blue-500 outline-none"
                 value={pageSize}
                 onChange={(e) => {
                   setPage(1);

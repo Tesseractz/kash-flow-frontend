@@ -7,7 +7,6 @@ import { useTheme } from "../context/ThemeContext";
 import { Button } from "../components/ui/Button";
 import { Card, CardContent } from "../components/ui/Card";
 import toast from "react-hot-toast";
-import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Logo } from "../components/Logo";
 import {
   Store,
@@ -609,7 +608,7 @@ function AuthHeader({ subtitle }) {
       <div className="flex justify-center mb-4">
         <Logo size={56} showText={false} />
       </div>
-      <h1 className="text-3xl font-bold">
+      <h1 className="text-2xl sm:text-3xl font-bold">
         <span className="text-emerald-600 dark:text-emerald-400">Kash</span>
         <span className="text-amber-500 dark:text-amber-400">-Flow</span>
       </h1>
@@ -626,7 +625,6 @@ function AuthHeader({ subtitle }) {
 function AuthTopButtons({ theme, toggleTheme }) {
   return (
     <div className="absolute top-4 right-4 flex items-center gap-2">
-      <LanguageSwitcher compact />
       <button
         onClick={toggleTheme}
         className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"

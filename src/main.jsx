@@ -19,40 +19,72 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 const router = createBrowserRouter([
   {
-    path: '/',
+    path: "/",
     element: <App />,
     children: [
-      { 
-        path: '/', 
-        element: <ProtectedRoute><Products /></ProtectedRoute> 
+      {
+        path: "/",
+        element: (
+          <ProtectedRoute>
+            <Sell />
+          </ProtectedRoute>
+        ),
       },
-      { 
-        path: '/sell', 
-        element: <ProtectedRoute><Sell /></ProtectedRoute> 
+      {
+        path: "/sell",
+        element: (
+          <ProtectedRoute>
+            <Sell />
+          </ProtectedRoute>
+        ),
       },
-      { 
-        path: '/reports', 
-        element: <ProtectedRoute><Reports /></ProtectedRoute> 
+      {
+        path: "/products",
+        element: (
+          <ProtectedRoute>
+            <Products />
+          </ProtectedRoute>
+        ),
       },
-      { 
-        path: '/analytics', 
-        element: <ProtectedRoute><Analytics /></ProtectedRoute> 
+      {
+        path: "/reports",
+        element: (
+          <ProtectedRoute>
+            <Reports />
+          </ProtectedRoute>
+        ),
       },
-      { 
-        path: '/auth', 
-        element: <AuthPage /> 
+      {
+        path: "/analytics",
+        element: (
+          <ProtectedRoute>
+            <Analytics />
+          </ProtectedRoute>
+        ),
       },
-      { 
-        path: '/billing', 
-        element: <ProtectedRoute><Billing /></ProtectedRoute> 
+      {
+        path: "/auth",
+        element: <AuthPage />,
       },
-      { 
-        path: '/profile', 
-        element: <ProtectedRoute><Profile /></ProtectedRoute> 
+      {
+        path: "/billing",
+        element: (
+          <ProtectedRoute>
+            <Billing />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/profile",
+        element: (
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        ),
       },
     ],
   },
-])
+]);
 
 const queryClient = new QueryClient()
 

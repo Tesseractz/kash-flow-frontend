@@ -407,12 +407,12 @@ export default function Sell() {
   const canSendReceipt = isOnline && !receiptModal.offline;
 
   return (
-    <div className="min-h-[calc(100vh-8rem)]">
+    <div className="min-h-[calc(100vh-8rem)] space-y-3 sm:space-y-4 pb-24 lg:pb-0">
       {/* Mobile: Floating Cart Button */}
       {cart.length > 0 && !showCart && (
         <button
           onClick={() => setShowCart(true)}
-          className="lg:hidden fixed bottom-6 right-6 z-40 w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95"
+          className="lg:hidden fixed bottom-5 right-5 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95"
         >
           <ShoppingCart size={24} />
           <span className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full text-xs font-bold flex items-center justify-center">
@@ -429,7 +429,7 @@ export default function Sell() {
             onClick={() => setShowCart(false)}
           />
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <ShoppingCart size={20} />
                 Cart ({cartItemCount})
@@ -450,11 +450,11 @@ export default function Sell() {
         {/* Products Grid */}
         <div className="flex-1 flex flex-col min-h-0">
           <Card className="flex-1 flex flex-col">
-            <CardHeader className="pb-3 flex-shrink-0">
+            <CardHeader className="pb-3 flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">
+                    <CardTitle className="text-base sm:text-lg">
                       {t("sell.select_product")}
                     </CardTitle>
                     <CardDescription className="hidden sm:block">
@@ -499,14 +499,14 @@ export default function Sell() {
                     placeholder={t("products.search_placeholder")}
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                    className="w-full pl-9 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm sm:text-base text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
                   />
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto pb-4">
+            <CardContent className="flex-1 overflow-auto pb-4 px-4 py-3 sm:px-6 sm:py-4">
               {productsQuery.isLoading && !usingCachedProducts ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                     <div
                       key={i}
@@ -812,10 +812,10 @@ export default function Sell() {
           {cart.map((item) => (
             <div
               key={item.product.id}
-              className="flex gap-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-xl"
+              className="flex gap-3 p-2 sm:p-3 bg-slate-50 dark:bg-slate-800 rounded-xl"
             >
               {/* Product Image */}
-              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {item.product.image_url ? (
                   <img
                     src={item.product.image_url}
@@ -843,11 +843,11 @@ export default function Sell() {
                   onClick={() =>
                     updateCartQuantity(item.product.id, item.quantity - 1)
                   }
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300"
+                  className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300"
                 >
-                  <Minus size={14} />
+                  <Minus size={12} />
                 </button>
-                <span className="w-8 text-center font-bold text-slate-800 dark:text-white text-sm">
+                <span className="w-7 sm:w-8 text-center font-bold text-slate-800 dark:text-white text-sm">
                   {item.quantity}
                 </span>
                 <button
@@ -855,15 +855,15 @@ export default function Sell() {
                     updateCartQuantity(item.product.id, item.quantity + 1)
                   }
                   disabled={item.quantity >= item.product.quantity}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-50"
+                  className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-50"
                 >
-                  <Plus size={14} />
+                  <Plus size={12} />
                 </button>
                 <button
                   onClick={() => removeFromCart(item.product.id)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 ml-1"
+                  className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 ml-1"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={12} />
                 </button>
               </div>
             </div>
@@ -878,28 +878,28 @@ export default function Sell() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setPaymentMethod("cash")}
-              className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+              className={`flex items-center justify-center gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all ${
                 paymentMethod === "cash"
                   ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
                   : "border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-400"
               }`}
             >
-              <Banknote size={20} />
-              <span className="font-semibold">Cash</span>
+              <Banknote size={18} />
+              <span className="font-semibold text-sm sm:text-base">Cash</span>
             </button>
             <button
               onClick={() => {
                 setPaymentMethod("card");
                 setPaymentAmount("");
               }}
-              className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+              className={`flex items-center justify-center gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all ${
                 paymentMethod === "card"
                   ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
                   : "border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-400"
               }`}
             >
-              <CreditCard size={20} />
-              <span className="font-semibold">Card</span>
+              <CreditCard size={18} />
+              <span className="font-semibold text-sm sm:text-base">Card</span>
             </button>
           </div>
         </div>
@@ -911,7 +911,7 @@ export default function Sell() {
               Amount Tendered
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-lg">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-base sm:text-lg">
                 R
               </span>
               <input
@@ -921,7 +921,7 @@ export default function Sell() {
                 placeholder={cartTotal.toFixed(2)}
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-lg sm:text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
               />
             </div>
             {/* Quick amount buttons */}
@@ -952,7 +952,7 @@ export default function Sell() {
             <span className="text-slate-600 dark:text-slate-400 font-medium">
               {t("sell.total")} ({cartItemCount} items)
             </span>
-            <span className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">
+            <span className="text-xl sm:text-3xl font-bold text-slate-800 dark:text-white">
               R {cartTotal.toFixed(2)}
             </span>
           </div>
