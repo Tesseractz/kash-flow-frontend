@@ -34,7 +34,7 @@ import {
 
 export default function Profile() {
   const { t } = useTranslation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile, role, isAdmin, refreshProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -304,6 +304,29 @@ export default function Profile() {
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                 Member since {formatDate(user?.created_at) || "N/A"}
               </p>
+              <div className="flex items-center gap-2 mt-2">
+                {role && (
+                  <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                    role === "admin" 
+                      ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300"
+                      : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  }`}>
+                    {role === "admin" ? <Shield size={12} /> : <User size={12} />}
+                    {role === "admin" ? "Admin" : "Cashier"}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={async () => {
+                    await refreshProfile();
+                    toast.success("Profile refreshed");
+                  }}
+                  className="text-xs"
+                >
+                  Refresh Role
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>

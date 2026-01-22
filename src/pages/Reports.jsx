@@ -222,6 +222,7 @@ export default function Reports() {
                         <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Product</th>
                         <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quantity</th>
                         <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Profit</th>
                         <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Time</th>
                       </tr>
                     </thead>
@@ -237,6 +238,11 @@ export default function Reports() {
                           <td className="py-4 px-4 text-slate-600 dark:text-slate-400">{t.quantity_sold}</td>
                           <td className="py-4 px-4">
                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">R {Number(t.total_price).toFixed(2)}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`font-semibold ${(t.profit || 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+                              R {Number(t.profit || 0).toFixed(2)}
+                            </span>
                           </td>
                           <td className="py-4 px-4 text-slate-500 dark:text-slate-400">{new Date(t.timestamp).toLocaleTimeString()}</td>
                         </tr>

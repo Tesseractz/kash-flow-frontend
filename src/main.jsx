@@ -15,6 +15,7 @@ import Analytics from './pages/Analytics'
 import AuthPage from './pages/Auth'
 import Billing from './pages/Billing'
 import Profile from './pages/Profile'
+import Users from './pages/Users'
 import ProtectedRoute from './components/ProtectedRoute'
 
 const router = createBrowserRouter([
@@ -43,6 +44,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <Products />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/users",
+        element: (
+          <ProtectedRoute adminOnly>
+            <Users />
           </ProtectedRoute>
         ),
       },

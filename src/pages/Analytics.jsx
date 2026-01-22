@@ -3,7 +3,7 @@ import { AnalyticsAPI, PlanAPI } from '../api/client'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-import { 
+import {
   TrendingUp,
   TrendingDown,
   DollarSign,
@@ -101,6 +101,20 @@ export default function Analytics() {
   const isLoading = analyticsQuery.isLoading && !usingCached;
   const isError = analyticsQuery.isError && !usingCached;
   const refetch = analyticsQuery.refetch;
+  
+  // Debug: log sales_trends to console
+  useEffect(() => {
+    if (data.sales_trends && data.sales_trends.length > 0) {
+      console.log('[Analytics Frontend] Total days in trends:', data.sales_trends.length);
+      const daysWithSales = data.sales_trends.filter(d => d.revenue > 0);
+      console.log('[Analytics Frontend] Days with sales:', daysWithSales);
+      console.log('[Analytics Frontend] First 5 days:', data.sales_trends.slice(0, 5));
+      console.log('[Analytics Frontend] Last 5 days:', data.sales_trends.slice(-5));
+      if (daysWithSales.length === 0) {
+        console.warn('[Analytics Frontend] WARNING: No days with sales found in trends!');
+      }
+    }
+  }, [data.sales_trends]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -337,25 +351,56 @@ export default function Analytics() {
                         {data.worst_day_revenue?.toFixed(2)})
                       </span>
                     </div>
-                    <div className="h-48 flex items-end gap-1 overflow-x-auto pb-2">
-                      {(data.sales_trends || []).slice(-30).map((day, i) => {
+                    <div 
+                      className="h-48 flex items-end gap-1 overflow-x-auto pb-2"
+                      ref={(el) => {
+                        // Auto-scroll to the end (most recent dates) when data loads
+                        if (el && data.sales_trends && data.sales_trends.length > 0) {
+                          setTimeout(() => {
+                            el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+                          }, 300);
+                        }
+                      }}
+                    >
+                      {(data.sales_trends || []).map((day, i) => {
+                        // Ensure revenue is a number
+                        const revenue = typeof day.revenue === 'number' ? day.revenue : parseFloat(day.revenue) || 0;
                         const maxRevenue =
                           Math.max(
-                            ...(data.sales_trends || []).map((d) => d.revenue)
+                            ...(data.sales_trends || []).map((d) => {
+                              const rev = typeof d.revenue === 'number' ? d.revenue : parseFloat(d.revenue) || 0;
+                              return rev;
+                            })
                           ) || 1;
-                        const height = (day.revenue / maxRevenue) * 100;
+                        const height = maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0;
+                        // Make bars with sales more visible - minimum 15% height for any bar with sales
+                        const barHeight = revenue > 0 ? Math.max(height, 15) : 2;
+                        const isMaxRevenue = revenue === maxRevenue && maxRevenue > 0;
+                        const hasSales = revenue > 0;
+                        
                         return (
                           <div
-                            key={i}
+                            key={`${day.date}-${i}`}
                             className="flex-1 min-w-[8px] group relative"
                           >
                             <div
-                              className="bg-blue-500 dark:bg-blue-400 rounded-t hover:bg-blue-600 dark:hover:bg-blue-300 transition-colors"
-                              style={{ height: `${Math.max(height, 2)}%` }}
+                              className={`rounded-t transition-all ${
+                                hasSales
+                                  ? "bg-blue-500 dark:bg-blue-400 hover:bg-blue-600 dark:hover:bg-blue-300 ring-2 ring-blue-300 dark:ring-blue-600" 
+                                  : "bg-slate-200 dark:bg-slate-700 opacity-30"
+                              } ${isMaxRevenue ? 'shadow-lg scale-105' : ''}`}
+                              style={{ height: `${barHeight}%` }}
+                              title={`${day.date}: R ${revenue.toFixed(2)}`}
                             />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                              {day.date}: R {day.revenue.toFixed(2)}
+                              {day.date}: R {revenue.toFixed(2)}
                             </div>
+                            {/* Show date label for days with sales or every 7th day */}
+                            {(hasSales || i % 7 === 0) && (
+                              <span className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap ${hasSales ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-400'}`}>
+                                {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
                           </div>
                         );
                       })}

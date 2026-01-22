@@ -21,8 +21,13 @@ export default defineConfig({
       '/stripe': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
       '/plan': 'http://localhost:8000',
+      '/profile': 'http://localhost:8000',
+      '/users': 'http://localhost:8000',
+      '/analytics': 'http://localhost:8000',
       '/alerts': 'http://localhost:8000',
       '/audit-logs': 'http://localhost:8000',
+      '/notifications': 'http://localhost:8000',
+      '/receipts': 'http://localhost:8000',
     }
   }
 })
