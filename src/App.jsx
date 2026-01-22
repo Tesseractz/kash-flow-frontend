@@ -26,6 +26,7 @@ import NotificationsBell from "./components/NotificationsBell";
 const navItems = [
   { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell", adminOnly: false },
   { to: "/products", icon: Package, labelKey: "nav.products", adminOnly: false },
+  { to: "/users", icon: User, labelKey: "nav.users", adminOnly: true },
   { to: "/reports", icon: BarChart3, labelKey: "nav.reports", adminOnly: true },
   { to: "/analytics", icon: PieChart, labelKey: "nav.analytics", adminOnly: true },
   { to: "/billing", icon: CreditCard, labelKey: "nav.billing", adminOnly: true },

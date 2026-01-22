@@ -23,6 +23,7 @@ const en = {
     nav: {
       products: 'Products',
       sell: 'Sell',
+      users: 'Team',
       reports: 'Reports',
       analytics: 'Analytics',
       billing: 'Billing',

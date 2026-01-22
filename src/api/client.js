@@ -74,6 +74,14 @@ export const ProfileAPI = {
   get: () => api.get('/profile').then(r => r.data),
 }
 
+export const UsersAPI = {
+  list: () => api.get('/users').then(r => r.data),
+  invite: (data) => api.post('/users/invite', data).then(r => r.data),
+  updateRole: (userId, role) => api.put(`/users/${userId}/role`, { role }).then(r => r.data),
+  remove: (userId) => api.delete(`/users/${userId}`).then(r => r.data),
+  getCredentials: (userId) => api.get(`/users/${userId}/credentials`).then(r => r.data),
+}
+
 export const AlertsAPI = {
   getLowStock: (threshold = 10) => api.get('/alerts/low-stock', { params: { threshold } }).then(r => r.data),
 }
