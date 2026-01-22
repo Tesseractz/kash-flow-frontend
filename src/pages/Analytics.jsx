@@ -3,7 +3,7 @@ import { AnalyticsAPI, PlanAPI } from '../api/client'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-import {
+import { 
   TrendingUp,
   TrendingDown,
   DollarSign,

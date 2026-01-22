@@ -204,11 +204,11 @@ export default function Billing() {
                 </div>
                 {getStatusBadge()}
               </div>
-
+              
               <div className="flex flex-wrap gap-2">
                 {hasStripeSubscription && (
-                  <Button
-                    variant="outline"
+                  <Button 
+                    variant="outline" 
                     size="sm"
                     onClick={openPortal}
                     disabled={portalLoading}
@@ -301,8 +301,8 @@ export default function Billing() {
         {plans.map((plan) => {
           const isCurrent = plan.planId === currentPlan && isActive;
           return (
-            <Card
-              key={plan.name}
+            <Card 
+              key={plan.name} 
               className={`relative ${
                 plan.popular
                   ? "border-blue-600 dark:border-blue-500 border-2 shadow-lg shadow-blue-600/10"
@@ -329,14 +329,14 @@ export default function Billing() {
                 >
                   <plan.icon className={`w-6 h-6 ${plan.iconColor}`} />
                 </div>
-
+                
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white">
                   {plan.name}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   {plan.description}
                 </p>
-
+                
                 <div className="mt-4 mb-2">
                   <span className="text-4xl font-bold text-slate-800 dark:text-white">
                     {plan.price}
@@ -354,7 +354,7 @@ export default function Billing() {
                     Current Plan
                   </Button>
                 ) : (
-                  <Button
+                  <Button 
                     variant={plan.popular ? "primary" : "outline"}
                     className="w-full"
                     onClick={() => upgrade(plan.planId)}

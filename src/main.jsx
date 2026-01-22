@@ -22,7 +22,7 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
-      {
+      { 
         path: "/",
         element: (
           <ProtectedRoute>
@@ -30,7 +30,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      {
+      { 
         path: "/sell",
         element: (
           <ProtectedRoute>
@@ -38,7 +38,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      {
+      { 
         path: "/products",
         element: (
           <ProtectedRoute>
@@ -49,27 +49,27 @@ const router = createBrowserRouter([
       {
         path: "/reports",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <Reports />
           </ProtectedRoute>
         ),
       },
-      {
+      { 
         path: "/analytics",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <Analytics />
           </ProtectedRoute>
         ),
       },
-      {
+      { 
         path: "/auth",
         element: <AuthPage />,
       },
-      {
+      { 
         path: "/billing",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <Billing />
           </ProtectedRoute>
         ),

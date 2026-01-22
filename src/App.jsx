@@ -24,11 +24,11 @@ import { Logo, LogoIcon } from "./components/Logo";
 import NotificationsBell from "./components/NotificationsBell";
 
 const navItems = [
-  { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell" },
-  { to: "/products", icon: Package, labelKey: "nav.products" },
-  { to: "/reports", icon: BarChart3, labelKey: "nav.reports" },
-  { to: "/analytics", icon: PieChart, labelKey: "nav.analytics" },
-  { to: "/billing", icon: CreditCard, labelKey: "nav.billing" },
+  { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell", adminOnly: false },
+  { to: "/products", icon: Package, labelKey: "nav.products", adminOnly: false },
+  { to: "/reports", icon: BarChart3, labelKey: "nav.reports", adminOnly: true },
+  { to: "/analytics", icon: PieChart, labelKey: "nav.analytics", adminOnly: true },
+  { to: "/billing", icon: CreditCard, labelKey: "nav.billing", adminOnly: true },
 ];
 
 function NavLink({ to, icon: Icon, labelKey, onClick }) {
@@ -156,6 +156,9 @@ function UserDropdown() {
 
 function Sidebar({ mobile, onClose }) {
   const { t } = useTranslation();
+  const { isAdmin } = useAuth();
+
+  const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <aside
@@ -179,10 +182,10 @@ function Sidebar({ mobile, onClose }) {
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            {...item}
+        {visibleNavItems.map((item) => (
+          <NavLink 
+            key={item.to} 
+            {...item} 
             onClick={mobile ? onClose : undefined}
           />
         ))}

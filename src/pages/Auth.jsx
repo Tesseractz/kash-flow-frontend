@@ -138,11 +138,11 @@ export default function AuthPage() {
   };
 
   const handleSignUp = async () => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
+        const { data, error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
           store_name: storeName.trim(),
         },
         emailRedirectTo: `${window.location.origin}/auth`,
@@ -151,12 +151,12 @@ export default function AuthPage() {
     if (error) throw error;
 
     // Check if email confirmation is required
-    if (data.user && !data.session) {
+        if (data.user && !data.session) {
       setMode(MODE.EMAIL_CONFIRMATION_SENT);
-    } else if (data.session) {
+        } else if (data.session) {
       toast.success("Account created successfully!");
       navigate("/");
-    }
+        }
   };
 
   const handleForgotPassword = async () => {
@@ -435,7 +435,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
       <AuthTopButtons theme={theme} toggleTheme={toggleTheme} />
-
+      
       <div className="w-full max-w-md">
         <AuthHeader
           subtitle={
@@ -468,7 +468,7 @@ export default function AuthPage() {
                   </div>
                 </div>
               )}
-
+              
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   {t("auth.email")}
@@ -488,12 +488,12 @@ export default function AuthPage() {
                   />
                 </div>
               </div>
-
+              
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t("auth.password")}
-                  </label>
+                </label>
                   {mode === MODE.SIGN_IN && (
                     <button
                       type="button"
@@ -546,8 +546,8 @@ export default function AuthPage() {
                 </div>
               )}
 
-              <Button
-                type="submit"
+              <Button 
+                type="submit" 
                 disabled={loading}
                 className="w-full"
                 size="lg"
@@ -566,7 +566,7 @@ export default function AuthPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <button
+              <button 
                 type="button"
                 onClick={() => {
                   setMode(mode === MODE.SIGN_UP ? MODE.SIGN_IN : MODE.SIGN_UP);

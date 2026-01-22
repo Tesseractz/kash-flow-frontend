@@ -307,7 +307,7 @@ export default function Sell() {
       const sales = await Promise.all(salePromises);
 
       toast.success(`Sale complete! Total: R ${cartTotal.toFixed(2)}`);
-
+      
       setReceiptModal({
         open: true,
         saleIds: sales.map((s) => s.id),
@@ -326,7 +326,7 @@ export default function Sell() {
 
       clearCart();
       setShowCart(false);
-
+      
       setTimeout(() => {
         qc.invalidateQueries({ queryKey: ["products-for-sale"] });
         qc.invalidateQueries({ queryKey: ["recent-sales"] });
@@ -363,7 +363,7 @@ export default function Sell() {
         payment_amount: receiptModal.paymentAmount,
         change_amount: receiptModal.change,
       });
-
+      
       if (result.success) {
         toast.success("Receipt sent to " + email);
         closeReceiptModal();
@@ -443,7 +443,7 @@ export default function Sell() {
             </div>
             <div className="flex-1 overflow-auto p-4">{renderCartPanel()}</div>
           </div>
-        </div>
+              </div>
       )}
 
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
@@ -453,15 +453,15 @@ export default function Sell() {
             <CardHeader className="pb-3 flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <div>
+              <div>
                     <CardTitle className="text-base sm:text-lg">
                       {t("sell.select_product")}
                     </CardTitle>
                     <CardDescription className="hidden sm:block">
                       Tap products to add to cart
                     </CardDescription>
-                  </div>
-                </div>
+              </div>
+            </div>
                 {!isOnline && (
                   <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
                     <AlertCircle className="h-4 w-4" />
@@ -501,7 +501,7 @@ export default function Sell() {
                     onChange={(e) => handleSearchChange(e.target.value)}
                     className="w-full pl-9 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm sm:text-base text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
                   />
-                </div>
+              </div>
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto pb-4 px-4 py-3 sm:px-6 sm:py-4">
@@ -529,14 +529,14 @@ export default function Sell() {
                     {paginatedProducts.map((p) => {
                       const inCart = getCartQuantity(p.id);
                       return (
-                        <button
-                          key={p.id}
+                    <button
+                      key={p.id}
                           onClick={() => addToCart(p)}
-                          disabled={p.quantity === 0}
+                      disabled={p.quantity === 0}
                           className={`relative flex flex-col rounded-xl border-2 text-left transition-all duration-200 overflow-hidden active:scale-[0.98] ${
                             inCart > 0
                               ? "border-blue-600 ring-2 ring-blue-600/20 shadow-lg"
-                              : p.quantity === 0
+                          : p.quantity === 0 
                               ? "border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed"
                               : "border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md bg-white dark:bg-slate-800"
                           }`}
@@ -579,8 +579,8 @@ export default function Sell() {
                               >
                                 {p.quantity === 0 ? "Out" : p.quantity}
                               </span>
-                            </div>
-                          </div>
+                </div>
+        </div>
 
                           {/* In cart indicator */}
                           {inCart > 0 && (
@@ -592,7 +592,7 @@ export default function Sell() {
                       );
                     })}
                   </div>
-
+                  
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
@@ -625,13 +625,13 @@ export default function Sell() {
               )}
             </CardContent>
           </Card>
-        </div>
+      </div>
 
         {/* Cart Panel - Desktop only */}
         <div className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
           <Card className="sticky top-4 flex flex-col max-h-[calc(100vh-8rem)]">
             <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-              <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5" />
                   Cart ({cartItemCount})
@@ -644,12 +644,12 @@ export default function Sell() {
                     Clear All
                   </button>
                 )}
-              </div>
-            </CardHeader>
+          </div>
+        </CardHeader>
             <CardContent className="flex-1 overflow-auto py-4">
               {renderCartPanel()}
-            </CardContent>
-          </Card>
+        </CardContent>
+      </Card>
         </div>
       </div>
 
@@ -667,7 +667,7 @@ export default function Sell() {
             >
               <X size={20} />
             </button>
-
+            
             {/* Receipt Header */}
             <div className="text-center mb-6">
               <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -745,7 +745,7 @@ export default function Sell() {
                 )}
               </div>
             </div>
-
+            
             {/* Send Receipt Form */}
             <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
               <p className="text-sm text-slate-600 dark:text-slate-300 text-center">
@@ -756,7 +756,7 @@ export default function Sell() {
                   Receipts can be sent when you are back online.
                 </p>
               )}
-
+              
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
@@ -767,7 +767,7 @@ export default function Sell() {
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
                 />
               </div>
-
+              
               <div className="flex gap-3">
                 <Button
                   variant="secondary"

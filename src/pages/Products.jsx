@@ -7,6 +7,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { Button } from "../components/ui/Button";
+import { useAuth } from "../context/AuthContext";
 import {
   Card,
   CardContent,
@@ -52,6 +53,7 @@ function formatZAR(value) {
 export default function Products() {
   const qc = useQueryClient();
   const isOnline = useOnlineStatus();
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -280,18 +282,20 @@ export default function Products() {
             Manage your product inventory
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            if (!isOnline) {
-              toast("Offline: product will be saved locally.");
-            }
-            setShowAddForm(!showAddForm);
-          }}
-        >
-          <Plus size={18} />
-          Add Product
-        </Button>
+        {isAdmin && (
+          <Button
+            size="sm"
+            onClick={() => {
+              if (!isOnline) {
+                toast("Offline: product will be saved locally.");
+              }
+              setShowAddForm(!showAddForm);
+            }}
+          >
+            <Plus size={18} />
+            Add Product
+          </Button>
+        )}
       </div>
 
       <Card className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
@@ -656,36 +660,38 @@ export default function Products() {
                       <p className="text-blue-600 dark:text-blue-400 font-bold mt-1">
                         {formatZAR(p.price)}
                       </p>
-                      <div className="flex gap-2 mt-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditing(p);
-                            setEditOpen(true);
-                          }}
-                        >
-                          <Pencil size={14} /> Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm(`Delete "${p.name}"?`)) {
-                              if (!isOnline) {
-                                enqueueDelete(p.id);
-                                applyLocalDelete(p.id);
-                                toast.success("Product deleted offline.");
-                              } else {
-                                deleteMutation.mutate(p.id);
+                      {isAdmin && (
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditing(p);
+                              setEditOpen(true);
+                            }}
+                          >
+                            <Pencil size={14} /> Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm(`Delete "${p.name}"?`)) {
+                                if (!isOnline) {
+                                  enqueueDelete(p.id);
+                                  applyLocalDelete(p.id);
+                                  toast.success("Product deleted offline.");
+                                } else {
+                                  deleteMutation.mutate(p.id);
+                                }
                               }
-                            }
-                          }}
-                          className="text-red-600"
-                        >
-                          <Trash2 size={14} /> Delete
-                        </Button>
-                      </div>
+                            }}
+                            className="text-red-600"
+                          >
+                            <Trash2 size={14} /> Delete
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -708,12 +714,16 @@ export default function Products() {
                       <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         Stock
                       </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Cost
-                      </th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Actions
-                      </th>
+                      {isAdmin && (
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          Cost
+                        </th>
+                      )}
+                      {isAdmin && (
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -766,41 +776,45 @@ export default function Products() {
                             {p.quantity} in stock
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-slate-600 dark:text-slate-400">
-                          {formatZAR(p.cost_price ?? 0)}
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditing(p);
-                                setEditOpen(true);
-                              }}
-                            >
-                              <Pencil size={16} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm(`Delete "${p.name}"?`)) {
-                                  if (!isOnline) {
-                                    enqueueDelete(p.id);
-                                    applyLocalDelete(p.id);
-                                    toast.success("Product deleted offline.");
-                                  } else {
-                                    deleteMutation.mutate(p.id);
+                        {isAdmin && (
+                          <td className="py-4 px-4 text-slate-600 dark:text-slate-400">
+                            {formatZAR(p.cost_price ?? 0)}
+                          </td>
+                        )}
+                        {isAdmin && (
+                          <td className="py-4 px-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditing(p);
+                                  setEditOpen(true);
+                                }}
+                              >
+                                <Pencil size={16} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm(`Delete "${p.name}"?`)) {
+                                    if (!isOnline) {
+                                      enqueueDelete(p.id);
+                                      applyLocalDelete(p.id);
+                                      toast.success("Product deleted offline.");
+                                    } else {
+                                      deleteMutation.mutate(p.id);
+                                    }
                                   }
-                                }
-                              }}
-                              className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
-                        </td>
+                                }}
+                                className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
