@@ -70,6 +70,10 @@ export const PlanAPI = {
   get: () => api.get('/plan').then(r => r.data),
 }
 
+export const ProfileAPI = {
+  get: () => api.get('/profile').then(r => r.data),
+}
+
 export const AlertsAPI = {
   getLowStock: (threshold = 10) => api.get('/alerts/low-stock', { params: { threshold } }).then(r => r.data),
 }
