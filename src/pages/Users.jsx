@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import { UsersAPI } from "../api/client";
+import { UsersAPI, PlanAPI } from "../api/client";
 import { Button } from "../components/ui/Button";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -44,6 +45,18 @@ export default function UsersPage() {
     queryFn: () => UsersAPI.list(),
     enabled: isAdmin,
   });
+
+  const planQuery = useQuery({
+    queryKey: ["plan"],
+    queryFn: () => PlanAPI.get(),
+    enabled: isAdmin,
+    staleTime: 30000,
+  });
+
+  const maxUsers = planQuery.data?.limits?.max_users || 1;
+  const currentUserCount = usersQuery.data?.length || 0;
+  const canAddMoreUsers = currentUserCount < maxUsers;
+  const planName = planQuery.data?.plan || "free";
 
   const inviteMutation = useMutation({
     mutationFn: (data) => UsersAPI.invite(data),
@@ -154,15 +167,30 @@ export default function UsersPage() {
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
             Manage users and their roles
+            <span className="ml-2 text-sm">
+              ({currentUserCount}/{maxUsers} users • <span className="capitalize">{planName}</span> plan)
+            </span>
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setShowInviteDialog(true)}
-        >
-          <UserPlus size={18} />
-          Invite User
-        </Button>
+        <div className="flex items-center gap-2">
+          {!canAddMoreUsers && (
+            <Link
+              to="/billing"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Upgrade to add more
+            </Link>
+          )}
+          <Button
+            size="sm"
+            onClick={() => setShowInviteDialog(true)}
+            disabled={!canAddMoreUsers}
+            title={!canAddMoreUsers ? `User limit reached (${maxUsers} for ${planName} plan)` : "Add a new team member"}
+          >
+            <UserPlus size={18} />
+            Invite User
+          </Button>
+        </div>
       </div>
 
       {usersQuery.isLoading ? (

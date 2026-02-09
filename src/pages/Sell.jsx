@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ProductsAPI, SalesAPI, NotificationsAPI } from "../api/client";
+import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CategoriesAPI, CustomersAPI, DiscountsAPI } from "../api/client";
 import toast from "react-hot-toast";
 import { Button } from "../components/ui/Button";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
@@ -38,6 +38,12 @@ import {
   AlertCircle,
   ImageIcon,
   Trash2,
+  RotateCcw,
+  ArrowLeftRight,
+  Tag,
+  User,
+  Percent,
+  Gift,
 } from "lucide-react";
 
 const PRODUCTS_PER_PAGE = 12;
@@ -46,6 +52,9 @@ const OFFLINE_QUEUE_KEY = OFFLINE_SALES_KEY;
 export default function Sell() {
   const { t } = useTranslation();
   const qc = useQueryClient();
+
+  // Mode: 'sale' or 'return'
+  const [mode, setMode] = useState("sale");
 
   // Cart state - array of { product, quantity }
   const [cart, setCart] = useState([]);
@@ -64,6 +73,14 @@ export default function Sell() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paymentAmount, setPaymentAmount] = useState("");
 
+  // Return state
+  const [returnReason, setReturnReason] = useState("");
+  const [refundModal, setRefundModal] = useState({
+    open: false,
+    items: [],
+    total: 0,
+  });
+
   // Receipt modal state
   const [receiptModal, setReceiptModal] = useState({
     open: false,
@@ -78,11 +95,37 @@ export default function Sell() {
   const [receiptEmail, setReceiptEmail] = useState("");
   const [sendingReceipt, setSendingReceipt] = useState(false);
 
+  // Category filter
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  
+  // Customer and Discount for checkout
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+
   const productsQuery = useQuery({
     queryKey: ["products-for-sale"],
     queryFn: () => ProductsAPI.list({ page: 1, page_size: 1000 }),
     staleTime: 60000,
     refetchOnWindowFocus: false,
+  });
+
+  // Fetch categories
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => CategoriesAPI.list(),
+    staleTime: 60000,
+  });
+
+  // Fetch customers for search
+  const customersQuery = useQuery({
+    queryKey: ["customers-search", customerSearch],
+    queryFn: () => CustomersAPI.list({ q: customerSearch || undefined }),
+    enabled: showCustomerSearch,
+    staleTime: 30000,
   });
 
   useEffect(() => {
@@ -130,14 +173,25 @@ export default function Sell() {
     !productsQuery.data?.items && cachedProducts && cachedProducts.length > 0;
 
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return allProducts;
-    const query = searchQuery.toLowerCase();
-    return allProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.sku?.toLowerCase().includes(query)
-    );
-  }, [allProducts, searchQuery]);
+    let products = allProducts;
+    
+    // Filter by category
+    if (selectedCategory) {
+      products = products.filter(p => p.category_id === selectedCategory);
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      products = products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.sku?.toLowerCase().includes(query)
+      );
+    }
+    
+    return products;
+  }, [allProducts, searchQuery, selectedCategory]);
 
   const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
 
@@ -152,12 +206,16 @@ export default function Sell() {
   };
 
   // Cart calculations
-  const cartTotal = useMemo(() => {
+  const cartSubtotal = useMemo(() => {
     return cart.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
       0
     );
   }, [cart]);
+
+  // Apply discount to get final total
+  const discountAmount = appliedDiscount?.discount_amount || 0;
+  const cartTotal = Math.max(0, cartSubtotal - discountAmount);
 
   const cartItemCount = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -169,6 +227,49 @@ export default function Sell() {
   const canCompleteSale =
     cart.length > 0 &&
     (paymentMethod === "card" || paymentAmountNum >= cartTotal);
+
+  // Apply discount code
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) return;
+    setIsApplyingDiscount(true);
+    try {
+      const result = await DiscountsAPI.apply(
+        discountCode, 
+        cartSubtotal, 
+        selectedCustomer?.id
+      );
+      setAppliedDiscount(result);
+      toast.success(`Discount applied: -R${result.discount_amount.toFixed(2)}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Invalid discount code");
+      setAppliedDiscount(null);
+    } finally {
+      setIsApplyingDiscount(false);
+    }
+  };
+
+  // Remove applied discount
+  const removeDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountCode("");
+  };
+
+  // Select customer
+  const handleSelectCustomer = (customer) => {
+    setSelectedCustomer(customer);
+    setShowCustomerSearch(false);
+    setCustomerSearch("");
+    toast.success(`Customer: ${customer.name}`);
+  };
+
+  // Clear customer
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    // If discount was per-customer, remove it too
+    if (appliedDiscount) {
+      removeDiscount();
+    }
+  };
 
   // Cart functions
   const addToCart = (product) => {
@@ -224,6 +325,75 @@ export default function Sell() {
     setCart([]);
     setPaymentAmount("");
     setPaymentMethod("cash");
+    setReturnReason("");
+    setSelectedCustomer(null);
+    setDiscountCode("");
+    setAppliedDiscount(null);
+    setShowCustomerSearch(false);
+    setCustomerSearch("");
+  };
+
+  const switchMode = (newMode) => {
+    if (cart.length > 0) {
+      if (!confirm(`Switching to ${newMode === 'sale' ? 'Sale' : 'Return'} mode will clear your current cart. Continue?`)) {
+        return;
+      }
+    }
+    clearCart();
+    setMode(newMode);
+  };
+
+  // Handle return processing
+  const handleReturn = async () => {
+    if (isSubmitting || cart.length === 0) return;
+
+    if (!isOnline) {
+      toast.error("Returns require an internet connection");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const returnPromises = cart.map((item) =>
+        ReturnsAPI.create({
+          product_id: item.product.id,
+          quantity_returned: item.quantity,
+          reason: returnReason || null,
+        })
+      );
+
+      const returns = await Promise.all(returnPromises);
+      const totalRefund = returns.reduce((sum, r) => sum + r.refund_amount, 0);
+
+      toast.success(`Return processed! Refund: R ${totalRefund.toFixed(2)}`);
+
+      setRefundModal({
+        open: true,
+        items: cart.map((item, idx) => ({
+          name: item.product.name,
+          quantity: item.quantity,
+          refund: returns[idx].refund_amount,
+        })),
+        total: totalRefund,
+      });
+
+      clearCart();
+      setShowCart(false);
+
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ["products-for-sale"] });
+        qc.invalidateQueries({ queryKey: ["products"] });
+      }, 100);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Failed to process return");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const closeRefundModal = () => {
+    setRefundModal({ open: false, items: [], total: 0 });
   };
 
   const handleSell = async () => {
@@ -412,10 +582,16 @@ export default function Sell() {
       {cart.length > 0 && !showCart && (
         <button
           onClick={() => setShowCart(true)}
-          className="lg:hidden fixed bottom-5 right-5 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95"
+          className={`lg:hidden fixed bottom-5 right-5 z-40 w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95 ${
+            mode === "return" 
+              ? "bg-amber-600 hover:bg-amber-700" 
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
-          <ShoppingCart size={24} />
-          <span className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full text-xs font-bold flex items-center justify-center">
+          {mode === "return" ? <RotateCcw size={24} /> : <ShoppingCart size={24} />}
+          <span className={`absolute -top-1 -right-1 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+            mode === "return" ? "bg-amber-400 text-amber-900" : "bg-emerald-500 text-white"
+          }`}>
             {cartItemCount}
           </span>
         </button>
@@ -429,10 +605,10 @@ export default function Sell() {
             onClick={() => setShowCart(false)}
           />
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <ShoppingCart size={20} />
-                Cart ({cartItemCount})
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${mode === "return" ? "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20" : "border-slate-200 dark:border-slate-700"}`}>
+              <h2 className={`text-lg font-bold flex items-center gap-2 ${mode === "return" ? "text-amber-700 dark:text-amber-300" : "text-slate-800 dark:text-white"}`}>
+                {mode === "return" ? <RotateCcw size={20} /> : <ShoppingCart size={20} />}
+                {mode === "return" ? `Return (${cartItemCount})` : `Cart (${cartItemCount})`}
               </h2>
               <button
                 onClick={() => setShowCart(false)}
@@ -452,13 +628,38 @@ export default function Sell() {
           <Card className="flex-1 flex flex-col">
             <CardHeader className="pb-3 flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4">
               <div className="flex flex-col gap-3">
+                {/* Mode Toggle */}
                 <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                    <button
+                      onClick={() => switchMode("sale")}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        mode === "sale"
+                          ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                      }`}
+                    >
+                      <ShoppingCart size={16} />
+                      <span className="hidden sm:inline">Sale</span>
+                    </button>
+                    <button
+                      onClick={() => switchMode("return")}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        mode === "return"
+                          ? "bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                      }`}
+                    >
+                      <RotateCcw size={16} />
+                      <span className="hidden sm:inline">Return</span>
+                    </button>
+                  </div>
                   <div>
-                    <CardTitle className="text-base sm:text-lg">
-                      {t("sell.select_product")}
+                    <CardTitle className={`text-base sm:text-lg ${mode === "return" ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                      {mode === "sale" ? t("sell.select_product") : "Select Product to Return"}
                     </CardTitle>
                     <CardDescription className="hidden sm:block">
-                      Tap products to add to cart
+                      {mode === "sale" ? "Tap products to add to cart" : "Tap products to add to return"}
                     </CardDescription>
                   </div>
                 </div>
@@ -502,6 +703,40 @@ export default function Sell() {
                     className="w-full pl-9 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm sm:text-base text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
                   />
                 </div>
+
+                {/* Category Filter */}
+                {Array.isArray(categoriesQuery.data) && categoriesQuery.data.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => { setSelectedCategory(null); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        !selectedCategory
+                          ? "bg-blue-600 text-white"
+                          : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      All
+                    </button>
+                    {categoriesQuery.data.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setSelectedCategory(cat.id); setCurrentPage(1); }}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                          selectedCategory === cat.id
+                            ? "text-white"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                        }`}
+                        style={selectedCategory === cat.id ? { backgroundColor: cat.color } : {}}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: cat.color }}
+                        />
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto pb-4 px-4 py-3 sm:px-6 sm:py-4">
@@ -632,11 +867,11 @@ export default function Sell() {
         {/* Cart Panel - Desktop only */}
         <div className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
           <Card className="sticky top-4 flex flex-col max-h-[calc(100vh-8rem)]">
-            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+            <CardHeader className={`pb-3 border-b flex-shrink-0 ${mode === "return" ? "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20" : "border-slate-100 dark:border-slate-800"}`}>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
-                  Cart ({cartItemCount})
+                <CardTitle className={`flex items-center gap-2 ${mode === "return" ? "text-amber-700 dark:text-amber-300" : ""}`}>
+                  {mode === "return" ? <RotateCcw className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+                  {mode === "return" ? `Return (${cartItemCount})` : `Cart (${cartItemCount})`}
                 </CardTitle>
                 {cart.length > 0 && (
                   <button
@@ -793,16 +1028,87 @@ export default function Sell() {
           </div>
         </div>
       )}
+
+      {/* Refund Modal */}
+      {refundModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={closeRefundModal}
+          />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <button
+              onClick={closeRefundModal}
+              className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Refund Header */}
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <RotateCcw className="w-10 h-10 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
+                Return Processed!
+              </h3>
+              <p className="text-slate-500 dark:text-slate-400 mt-1">
+                Stock has been added back to inventory
+              </p>
+            </div>
+
+            {/* Refund Details */}
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 mb-6 space-y-3">
+              {/* Items */}
+              <div className="space-y-2 pb-3 border-b border-amber-200 dark:border-amber-700">
+                {refundModal.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-300">
+                      {item.quantity}x {item.name}
+                    </span>
+                    <span className="font-medium text-amber-700 dark:text-amber-300">
+                      R {item.refund.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-amber-700 dark:text-amber-300 font-semibold text-lg">
+                    Total Refund
+                  </span>
+                  <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                    R {refundModal.total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={closeRefundModal}
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   function renderCartPanel() {
     if (cart.length === 0) {
       return (
-        <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 py-12">
-          <ShoppingCart className="w-16 h-16 mb-4 opacity-30" />
-          <p className="text-lg font-medium">Cart is empty</p>
-          <p className="text-sm mt-1">Tap products to add</p>
+        <div className={`h-full flex flex-col items-center justify-center py-12 ${mode === "return" ? "text-amber-400 dark:text-amber-500" : "text-slate-400 dark:text-slate-500"}`}>
+          {mode === "return" ? (
+            <RotateCcw className="w-16 h-16 mb-4 opacity-30" />
+          ) : (
+            <ShoppingCart className="w-16 h-16 mb-4 opacity-30" />
+          )}
+          <p className="text-lg font-medium">{mode === "return" ? "No items to return" : "Cart is empty"}</p>
+          <p className="text-sm mt-1">{mode === "return" ? "Tap products to add to return" : "Tap products to add"}</p>
         </div>
       );
     }
@@ -872,42 +1178,189 @@ export default function Sell() {
           ))}
         </div>
 
-        {/* Payment Method */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Payment Method
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setPaymentMethod("cash")}
-              className={`flex items-center justify-center gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all ${
-                paymentMethod === "cash"
-                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                  : "border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-400"
-              }`}
-            >
-              <Banknote size={18} />
-              <span className="font-semibold text-sm sm:text-base">Cash</span>
-            </button>
-            <button
-              onClick={() => {
-                setPaymentMethod("card");
-                setPaymentAmount("");
-              }}
-              className={`flex items-center justify-center gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all ${
-                paymentMethod === "card"
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-                  : "border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-400"
-              }`}
-            >
-              <CreditCard size={18} />
-              <span className="font-semibold text-sm sm:text-base">Card</span>
-            </button>
+        {/* Customer Selection (Sale mode only) */}
+        {mode === "sale" && (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Customer (Optional)
+            </label>
+            {selectedCustomer ? (
+              <div className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                    {selectedCustomer.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-slate-800 dark:text-white">{selectedCustomer.name}</p>
+                    {selectedCustomer.loyalty_points > 0 && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        <Gift size={10} /> {selectedCustomer.loyalty_points} points
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={clearCustomer}
+                  className="p-1 hover:bg-blue-100 dark:hover:bg-blue-800 rounded"
+                >
+                  <X size={16} className="text-slate-500" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setShowCustomerSearch(!showCustomerSearch)}
+                  className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-blue-400 text-slate-500 dark:text-slate-400 text-sm"
+                >
+                  <User size={16} />
+                  <span>Add customer</span>
+                </button>
+                
+                {showCustomerSearch && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                    <div className="p-2">
+                      <input
+                        type="text"
+                        placeholder="Search customers..."
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm"
+                        autoFocus
+                      />
+                    </div>
+                    {customersQuery.isLoading ? (
+                      <div className="p-3 text-center text-sm text-slate-500">Loading...</div>
+                    ) : customersQuery.data?.length === 0 ? (
+                      <div className="p-3 text-center text-sm text-slate-500">No customers found</div>
+                    ) : (
+                      <div className="py-1">
+                        {customersQuery.data?.map((customer) => (
+                          <button
+                            key={customer.id}
+                            onClick={() => handleSelectCustomer(customer)}
+                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-left"
+                          >
+                            <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-xs font-bold">
+                              {customer.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 dark:text-white truncate">{customer.name}</p>
+                              <p className="text-xs text-slate-500 truncate">{customer.email || customer.phone || 'No contact'}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Payment Amount (for cash) */}
-        {paymentMethod === "cash" && (
+        {/* Discount Code (Sale mode only) */}
+        {mode === "sale" && cart.length > 0 && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Discount Code
+            </label>
+            {appliedDiscount ? (
+              <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Percent size={16} className="text-green-600" />
+                  <div>
+                    <p className="font-medium text-sm text-green-700 dark:text-green-400">{appliedDiscount.discount_name}</p>
+                    <p className="text-xs text-green-600">-R{appliedDiscount.discount_amount.toFixed(2)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={removeDiscount}
+                  className="p-1 hover:bg-green-100 dark:hover:bg-green-800 rounded"
+                >
+                  <X size={16} className="text-slate-500" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter code"
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleApplyDiscount}
+                  disabled={!discountCode.trim() || isApplyingDiscount}
+                >
+                  {isApplyingDiscount ? "..." : "Apply"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Payment Method (Sale mode only) */}
+        {mode === "sale" && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Payment Method
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setPaymentMethod("cash")}
+                className={`flex items-center justify-center gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all ${
+                  paymentMethod === "cash"
+                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                    : "border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <Banknote size={18} />
+                <span className="font-semibold text-sm sm:text-base">Cash</span>
+              </button>
+              <button
+                onClick={() => {
+                  setPaymentMethod("card");
+                  setPaymentAmount("");
+                }}
+                className={`flex items-center justify-center gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all ${
+                  paymentMethod === "card"
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                    : "border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <CreditCard size={18} />
+                <span className="font-semibold text-sm sm:text-base">Card</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Return Reason (Return mode only) */}
+        {mode === "return" && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Return Reason (Optional)
+            </label>
+            <select
+              value={returnReason}
+              onChange={(e) => setReturnReason(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none"
+            >
+              <option value="">Select reason...</option>
+              <option value="defective">Defective product</option>
+              <option value="wrong_item">Wrong item</option>
+              <option value="not_needed">No longer needed</option>
+              <option value="damaged">Damaged on arrival</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        )}
+
+        {/* Payment Amount (for cash in sale mode) */}
+        {mode === "sale" && paymentMethod === "cash" && (
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Amount Tendered
@@ -948,18 +1401,43 @@ export default function Sell() {
           </div>
         )}
 
-        {/* Total & Change */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
+        {/* Total & Change / Refund */}
+        <div className={`pt-4 border-t space-y-3 ${mode === "return" ? "border-amber-200 dark:border-amber-700" : "border-slate-200 dark:border-slate-700"}`}>
+          {/* Subtotal (show if discount applied) */}
+          {mode === "sale" && appliedDiscount && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-500 dark:text-slate-400">
+                Subtotal ({cartItemCount} items)
+              </span>
+              <span className="text-slate-600 dark:text-slate-300">
+                R {cartSubtotal.toFixed(2)}
+              </span>
+            </div>
+          )}
+
+          {/* Discount (show if applied) */}
+          {mode === "sale" && appliedDiscount && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                <Percent size={12} />
+                {appliedDiscount.discount_name}
+              </span>
+              <span className="text-green-600 dark:text-green-400 font-medium">
+                -R {appliedDiscount.discount_amount.toFixed(2)}
+              </span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <span className="text-slate-600 dark:text-slate-400 font-medium">
-              {t("sell.total")} ({cartItemCount} items)
+              {mode === "return" ? "Refund Total" : t("sell.total")} {!appliedDiscount && `(${cartItemCount} items)`}
             </span>
-            <span className="text-xl sm:text-3xl font-bold text-slate-800 dark:text-white">
+            <span className={`text-xl sm:text-3xl font-bold ${mode === "return" ? "text-amber-600 dark:text-amber-400" : "text-slate-800 dark:text-white"}`}>
               R {cartTotal.toFixed(2)}
             </span>
           </div>
 
-          {paymentMethod === "cash" && paymentAmountNum > 0 && (
+          {mode === "sale" && paymentMethod === "cash" && paymentAmountNum > 0 && (
             <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
               <div className="flex justify-between items-center text-sm mb-1">
                 <span className="text-slate-600 dark:text-slate-400">
@@ -986,19 +1464,46 @@ export default function Sell() {
             </div>
           )}
 
-          <Button
-            className="w-full h-14 text-lg"
-            size="lg"
-            onClick={handleSell}
-            disabled={isSubmitting || !canCompleteSale}
-          >
-            <ShoppingCart size={24} />
-            {isSubmitting ? "Processing..." : t("sell.complete_sale")}
-          </Button>
+          {mode === "return" && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm">
+                <ArrowLeftRight size={16} />
+                <span>Stock will be added back to inventory</span>
+              </div>
+            </div>
+          )}
 
-          {paymentMethod === "cash" && !canCompleteSale && paymentAmount && (
+          {mode === "sale" ? (
+            <Button
+              className="w-full h-14 text-lg"
+              size="lg"
+              onClick={handleSell}
+              disabled={isSubmitting || !canCompleteSale}
+            >
+              <ShoppingCart size={24} />
+              {isSubmitting ? "Processing..." : t("sell.complete_sale")}
+            </Button>
+          ) : (
+            <Button
+              className="w-full h-14 text-lg bg-amber-600 hover:bg-amber-700"
+              size="lg"
+              onClick={handleReturn}
+              disabled={isSubmitting || cart.length === 0 || !isOnline}
+            >
+              <RotateCcw size={24} />
+              {isSubmitting ? "Processing..." : "Process Return"}
+            </Button>
+          )}
+
+          {mode === "sale" && paymentMethod === "cash" && !canCompleteSale && paymentAmount && (
             <p className="text-xs text-red-500 text-center">
               Amount must be at least R {cartTotal.toFixed(2)}
+            </p>
+          )}
+
+          {mode === "return" && !isOnline && (
+            <p className="text-xs text-amber-600 text-center">
+              Returns require an internet connection
             </p>
           )}
         </div>

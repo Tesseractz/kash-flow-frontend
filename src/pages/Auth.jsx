@@ -37,6 +37,11 @@ export default function AuthPage() {
   const [storeName, setStoreName] = useState("");
   const [mode, setMode] = useState(MODE.SIGN_IN);
   const [loading, setLoading] = useState(false);
+  
+  // Privacy consents
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   const { t } = useTranslation();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -121,6 +126,14 @@ export default function AuthPage() {
       }
       if (!storeName.trim()) {
         toast.error("Store name is required");
+        return false;
+      }
+      if (!termsAccepted) {
+        toast.error("You must accept the Terms of Service");
+        return false;
+      }
+      if (!privacyAccepted) {
+        toast.error("You must accept the Privacy Policy");
         return false;
       }
     }
@@ -542,6 +555,58 @@ export default function AuthPage() {
                       autoComplete="new-password"
                       className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                     />
+                  </div>
+                </div>
+              )}
+
+              {/* Consent Checkboxes for Signup */}
+              {mode === MODE.SIGN_UP && (
+                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="terms" className="text-sm text-slate-600 dark:text-slate-400">
+                      I agree to the{" "}
+                      <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
+                        Terms of Service
+                      </a>{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="privacy"
+                      checked={privacyAccepted}
+                      onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                      className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="privacy" className="text-sm text-slate-600 dark:text-slate-400">
+                      I have read and accept the{" "}
+                      <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+                        Privacy Policy
+                      </a>{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="marketing"
+                      checked={marketingOptIn}
+                      onChange={(e) => setMarketingOptIn(e.target.checked)}
+                      className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="marketing" className="text-sm text-slate-600 dark:text-slate-400">
+                      I want to receive updates about new features and special offers (optional)
+                    </label>
                   </div>
                 </div>
               )}

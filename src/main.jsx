@@ -11,11 +11,18 @@ import App from './App'
 import Products from './pages/Products'
 import Sell from './pages/Sell'
 import Reports from './pages/Reports'
-import Analytics from './pages/Analytics'
 import AuthPage from './pages/Auth'
 import Billing from './pages/Billing'
 import Profile from './pages/Profile'
 import Users from './pages/Users'
+import Categories from './pages/Categories'
+import Customers from './pages/Customers'
+import Discounts from './pages/Discounts'
+import Expenses from './pages/Expenses'
+import Employees from './pages/Employees'
+import PrivacySettings from './pages/PrivacySettings'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
 import ProtectedRoute from './components/ProtectedRoute'
 
 const router = createBrowserRouter([
@@ -64,14 +71,6 @@ const router = createBrowserRouter([
         ),
       },
       { 
-        path: "/analytics",
-        element: (
-          <ProtectedRoute adminOnly>
-            <Analytics />
-          </ProtectedRoute>
-        ),
-      },
-      { 
         path: "/auth",
         element: <AuthPage />,
       },
@@ -90,6 +89,62 @@ const router = createBrowserRouter([
             <Profile />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: "/categories",
+        element: (
+          <ProtectedRoute adminOnly>
+            <Categories />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/customers",
+        element: (
+          <ProtectedRoute adminOnly>
+            <Customers />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/discounts",
+        element: (
+          <ProtectedRoute adminOnly>
+            <Discounts />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/expenses",
+        element: (
+          <ProtectedRoute adminOnly>
+            <Expenses />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/employees",
+        element: (
+          <ProtectedRoute adminOnly>
+            <Employees />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/privacy-settings",
+        element: (
+          <ProtectedRoute>
+            <PrivacySettings />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/terms",
+        element: <Terms />,
+      },
+      {
+        path: "/privacy",
+        element: <Privacy />,
       },
     ],
   },

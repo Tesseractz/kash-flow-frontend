@@ -52,6 +52,10 @@ export const SalesAPI = {
   create: (data) => api.post('/sales', data).then(r => r.data),
 }
 
+export const ReturnsAPI = {
+  create: (data) => api.post('/returns', data).then(r => r.data),
+}
+
 export const ReportsAPI = {
   get: (date) => api.get('/reports', { params: { date_utc: date } }).then(r => r.data),
   exportCSV: (date) => api.get('/reports/export', { 
@@ -104,6 +108,135 @@ export const NotificationsAPI = {
   updateSettings: (data) =>
     api.put("/notifications/settings", data).then((r) => r.data),
   sendReceipt: (data) => api.post("/receipts/send", data).then((r) => r.data),
+};
+
+// Categories API
+export const CategoriesAPI = {
+  list: (includeInactive = false) => 
+    api.get('/categories', { params: { include_inactive: includeInactive } }).then(r => r.data),
+  get: (id) => api.get(`/categories/${id}`).then(r => r.data),
+  create: (data) => api.post('/categories', data).then(r => r.data),
+  update: (id, data) => api.put(`/categories/${id}`, data).then(r => r.data),
+  remove: (id) => api.delete(`/categories/${id}`).then(r => r.data),
+};
+
+// Customers API
+export const CustomersAPI = {
+  list: (params = {}) => 
+    api.get('/customers', { params }).then(r => r.data),
+  get: (id) => api.get(`/customers/${id}`).then(r => r.data),
+  getPurchases: (id, limit = 50) => 
+    api.get(`/customers/${id}/purchases`, { params: { limit } }).then(r => r.data),
+  create: (data) => api.post('/customers', data).then(r => r.data),
+  update: (id, data) => api.put(`/customers/${id}`, data).then(r => r.data),
+  remove: (id) => api.delete(`/customers/${id}`).then(r => r.data),
+  addPoints: (id, points) => 
+    api.post(`/customers/${id}/add-points`, null, { params: { points } }).then(r => r.data),
+};
+
+// Discounts API
+export const DiscountsAPI = {
+  list: (params = {}) => 
+    api.get('/discounts', { params }).then(r => r.data),
+  get: (id) => api.get(`/discounts/${id}`).then(r => r.data),
+  create: (data) => api.post('/discounts', data).then(r => r.data),
+  update: (id, data) => api.put(`/discounts/${id}`, data).then(r => r.data),
+  remove: (id) => api.delete(`/discounts/${id}`).then(r => r.data),
+  apply: (code, cartTotal, customerId = null) => 
+    api.post('/discounts/apply', { code, cart_total: cartTotal, customer_id: customerId }).then(r => r.data),
+};
+
+// Barcode API
+export const BarcodeAPI = {
+  generate: (productId, barcodeType = 'CODE128') => 
+    api.post(`/products/${productId}/barcode`, { product_id: productId, barcode_type: barcodeType }).then(r => r.data),
+  lookup: (barcode) => api.get(`/barcode/lookup/${barcode}`).then(r => r.data),
+};
+
+// Expenses API
+export const ExpensesAPI = {
+  list: (params = {}) => api.get('/expenses', { params }).then(r => r.data),
+  get: (id) => api.get(`/expenses/${id}`).then(r => r.data),
+  create: (data) => api.post('/expenses', data).then(r => r.data),
+  update: (id, data) => api.put(`/expenses/${id}`, data).then(r => r.data),
+  remove: (id) => api.delete(`/expenses/${id}`).then(r => r.data),
+  getCategories: () => api.get('/expense-categories').then(r => r.data),
+  getSummary: (startDate, endDate) => 
+    api.get('/expenses/summary', { params: { start_date: startDate, end_date: endDate } }).then(r => r.data),
+};
+
+// Shifts API
+export const ShiftsAPI = {
+  list: (params = {}) => api.get('/shifts', { params }).then(r => r.data),
+  create: (data) => api.post('/shifts', data).then(r => r.data),
+  update: (id, data) => api.put(`/shifts/${id}`, data).then(r => r.data),
+  remove: (id) => api.delete(`/shifts/${id}`).then(r => r.data),
+};
+
+// Time Clock API
+export const TimeClockAPI = {
+  list: (params = {}) => api.get('/time-clock', { params }).then(r => r.data),
+  clockIn: (data = {}) => api.post('/time-clock/clock-in', data).then(r => r.data),
+  clockOut: (data = {}) => api.post('/time-clock/clock-out', data).then(r => r.data),
+  getCurrentStatus: () => api.get('/time-clock/current').then(r => r.data),
+};
+
+// Commissions API
+export const CommissionsAPI = {
+  list: (params = {}) => api.get('/commissions', { params }).then(r => r.data),
+  approve: (id) => api.post(`/commissions/${id}/approve`).then(r => r.data),
+  markPaid: (id) => api.post(`/commissions/${id}/pay`).then(r => r.data),
+};
+
+// Enhanced Reports API
+export const EnhancedReportsAPI = {
+  getProfitLoss: (startDate, endDate) => 
+    api.get('/reports/profit-loss', { params: { start_date: startDate, end_date: endDate } }).then(r => r.data),
+  getEmployeeSales: (startDate, endDate) => 
+    api.get('/reports/employee-sales', { params: { start_date: startDate, end_date: endDate } }).then(r => r.data),
+  getTax: (startDate, endDate, taxRate = 15) => 
+    api.get('/reports/tax', { params: { start_date: startDate, end_date: endDate, tax_rate: taxRate } }).then(r => r.data),
+  getInventoryValuation: (threshold = 10) => 
+    api.get('/reports/inventory-valuation', { params: { low_stock_threshold: threshold } }).then(r => r.data),
+  exportProfitLossCSV: (startDate, endDate) => 
+    api.get('/reports/export/profit-loss', { 
+      params: { start_date: startDate, end_date: endDate },
+      responseType: 'blob'
+    }).then(r => r.data),
+};
+
+// Privacy & Compliance API
+export const PrivacyAPI = {
+  // Consents
+  getConsents: () => api.get('/privacy/consents').then(r => r.data),
+  updateConsent: (data) => api.post('/privacy/consents', data).then(r => r.data),
+  
+  // Privacy Settings
+  getSettings: () => api.get('/privacy/settings').then(r => r.data),
+  updateSettings: (data) => api.put('/privacy/settings', data).then(r => r.data),
+  
+  // Sessions
+  getSessions: () => api.get('/privacy/sessions').then(r => r.data),
+  revokeSession: (sessionId) => api.delete(`/privacy/sessions/${sessionId}`).then(r => r.data),
+  revokeAllSessions: () => api.delete('/privacy/sessions').then(r => r.data),
+  
+  // Data Export
+  requestDataExport: () => api.post('/privacy/data-export').then(r => r.data),
+  getDataExportRequests: () => api.get('/privacy/data-export').then(r => r.data),
+  
+  // Account Deletion
+  requestAccountDeletion: (data) => api.post('/privacy/delete-account', data).then(r => r.data),
+  cancelAccountDeletion: (requestId) => api.delete(`/privacy/delete-account/${requestId}`).then(r => r.data),
+  
+  // Cookies
+  getCookiePreferences: () => api.get('/privacy/cookies').then(r => r.data),
+  saveCookiePreferences: (data) => api.post('/privacy/cookies', data).then(r => r.data),
+};
+
+// Legal Documents API
+export const LegalAPI = {
+  getTerms: () => api.get('/legal/terms').then(r => r.data),
+  getPrivacyPolicy: () => api.get('/legal/privacy').then(r => r.data),
 };
 
 // Dev instrumentation: log request durations to help diagnose slowness

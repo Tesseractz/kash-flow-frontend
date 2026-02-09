@@ -5,12 +5,31 @@ import { Button } from '../components/ui/Button'
 import { Card, CardContent } from '../components/ui/Card'
 import { BillingAPI, PlanAPI } from '../api/client'
 import toast from 'react-hot-toast'
-import { Check, Zap, Building2, Package, Users, FileText, Bell, Shield, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
+import { Check, X, Zap, Building2, Package, Users, FileText, Bell, Shield, CreditCard, Calendar, AlertTriangle, Gift } from 'lucide-react'
 
 const plans = [
   {
+    name: 'Free',
+    price: 'R0',
+    period: '/forever',
+    description: 'Get started for free',
+    icon: Gift,
+    iconBg: 'bg-slate-100 dark:bg-slate-700',
+    iconColor: 'text-slate-600 dark:text-slate-400',
+    features: [
+      { text: 'Up to 10 products', included: true },
+      { text: '1 team member', included: true },
+      { text: 'Basic POS & sales', included: true },
+      { text: 'Advanced analytics', included: false },
+      { text: 'Low stock alerts', included: false },
+      { text: 'CSV export', included: false },
+    ],
+    planId: 'free',
+    isFree: true,
+  },
+  {
     name: 'Pro',
-    price: 'R250',
+    price: 'R190',
     period: '/month',
     description: 'For growing businesses',
     icon: Zap,
@@ -18,30 +37,26 @@ const plans = [
     iconColor: 'text-blue-600 dark:text-blue-400',
     popular: true,
     features: [
-      'Unlimited products',
-      'Up to 3 users',
-      'Advanced analytics',
-      'Low stock alerts',
-      'CSV export',
-      'Priority support',
+      { text: 'Unlimited products', included: true },
+      { text: 'Up to 3 team members', included: true },
+      { text: 'Advanced analytics', included: true },
+      { text: 'Low stock alerts', included: true },
+      { text: 'CSV export', included: true },
     ],
     planId: 'pro',
   },
   {
     name: 'Business',
-    price: 'R350',
+    price: 'R220',
     period: '/month',
     description: 'For larger operations',
     icon: Building2,
     iconBg: 'bg-purple-100 dark:bg-purple-900/50',
     iconColor: 'text-purple-600 dark:text-purple-400',
     features: [
-      'Everything in Pro',
-      'Unlimited users',
-      'Role-based access',
-      'Audit logs',
-      'API access',
-      'Dedicated support',
+      { text: 'Everything in Pro', included: true },
+      { text: 'Unlimited team members', included: true },
+      { text: 'Audit logs', included: true },
     ],
     planId: 'business',
   },
@@ -179,7 +194,7 @@ export default function Billing() {
           Choose Your Plan
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1 sm:mt-2">
-          Start with a 7-day free trial. No credit card required to start.
+          Start with a 30-day free trial. Credit card required, but you won't be charged until the trial ends.
         </p>
       </div>
 
@@ -278,7 +293,26 @@ export default function Billing() {
         </Card>
       )}
 
-      {!isActive && (
+      {isTrialing && (
+        <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <Zap className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-emerald-800 dark:text-emerald-200 font-medium">
+                  🎉 Trial Active — Full Access Unlocked!
+                </p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
+                  You have access to <strong>all features</strong> during your trial period ({trialDaysLeft} days remaining).
+                  After the trial ends, features will be locked until you subscribe.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isActive && !isTrialing && (
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
@@ -289,7 +323,7 @@ export default function Billing() {
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                   Subscribe to Pro or Business to unlock all features. Start
-                  with a 7-day free trial!
+                  with a 30-day free trial!
                 </p>
               </div>
             </div>
@@ -297,9 +331,11 @@ export default function Billing() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 max-w-5xl mx-auto">
         {plans.map((plan) => {
-          const isCurrent = plan.planId === currentPlan && isActive;
+          const isCurrent = (plan.planId === currentPlan) || 
+            (plan.planId === 'free' && (currentPlan === 'free' || currentPlan === 'expired'));
+          const isFreePlan = plan.isFree;
           return (
             <Card
               key={plan.name}
@@ -345,13 +381,23 @@ export default function Billing() {
                     {plan.period}
                   </span>
                 </div>
-                <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4">
-                  7-day free trial included
-                </p>
+                {isFreePlan ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                    No credit card required
+                  </p>
+                ) : (
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4">
+                    30-day free trial • Card required
+                  </p>
+                )}
 
                 {isCurrent ? (
                   <Button variant="secondary" className="w-full" disabled>
                     Current Plan
+                  </Button>
+                ) : isFreePlan ? (
+                  <Button variant="outline" className="w-full" disabled>
+                    —
                   </Button>
                 ) : (
                   <Button
@@ -362,7 +408,7 @@ export default function Billing() {
                   >
                     {loading
                       ? "Processing..."
-                      : isActive
+                      : hasStripeSubscription
                       ? "Switch Plan"
                       : "Start Free Trial"}
                   </Button>
@@ -373,13 +419,23 @@ export default function Billing() {
                     What's included:
                   </p>
                   <ul className="space-y-2.5">
-                    {plan.features.map((feature) => (
+                    {plan.features.map((feature, idx) => (
                       <li
-                        key={feature}
-                        className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400"
+                        key={idx}
+                        className={`flex items-start gap-2 text-sm ${
+                          feature.included 
+                            ? "text-slate-600 dark:text-slate-400" 
+                            : "text-slate-400 dark:text-slate-500"
+                        }`}
                       >
-                        <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
+                        {feature.included ? (
+                          <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mt-0.5 flex-shrink-0" />
+                        )}
+                        <span className={!feature.included ? "line-through" : ""}>
+                          {feature.text}
+                        </span>
                       </li>
                     ))}
                   </ul>
