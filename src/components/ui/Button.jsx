@@ -6,6 +6,7 @@ const variants = {
   secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 focus:ring-slate-400',
   success: 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 focus:ring-emerald-500',
   danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus:ring-red-500',
+  destructive: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus:ring-red-500',
   ghost: 'bg-transparent hover:bg-slate-100 text-slate-700 focus:ring-slate-400',
   outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 active:bg-blue-100 focus:ring-blue-500',
 }

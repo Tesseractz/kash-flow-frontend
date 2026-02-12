@@ -229,7 +229,7 @@ export default function UsersPage() {
           {users.map((user) => (
             <Card key={user.id}>
               <CardContent className="py-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
                       {user.email?.charAt(0).toUpperCase() || "U"}
@@ -264,7 +264,7 @@ export default function UsersPage() {
                     </div>
                   </div>
                   {user.id !== currentUser && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <UserActionsMenu
                         user={user}
                         onRoleChange={handleRoleChange}

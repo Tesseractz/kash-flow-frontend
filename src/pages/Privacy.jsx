@@ -5,8 +5,8 @@ import { Link } from 'react-router-dom'
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-6 sm:py-12 px-4">
+      <div className="max-w-3xl mx-auto w-full min-w-0">
         <div className="mb-8">
           <Link to="/auth">
             <Button variant="ghost" size="sm">
@@ -17,10 +17,10 @@ export default function Privacy() {
         </div>
 
         <Card>
-          <CardContent className="p-8 prose dark:prose-invert max-w-none">
+          <CardContent className="p-4 sm:p-8 prose dark:prose-invert max-w-none">
             <div className="flex items-center gap-3 mb-6">
-              <Shield className="w-8 h-8 text-green-600" />
-              <h1 className="text-3xl font-bold m-0">Privacy Policy</h1>
+              <Shield className="w-8 h-8 text-green-600 flex-shrink-0" />
+              <h1 className="text-2xl sm:text-3xl font-bold m-0 break-words">Privacy Policy</h1>
             </div>
             
             <p className="text-sm text-gray-500">

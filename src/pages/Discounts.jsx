@@ -204,16 +204,16 @@ export default function Discounts() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Discounts & Coupons</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Discounts & Coupons</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
             Create and manage promotional discounts
           </p>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button onClick={() => openDialog()} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Create Discount
         </Button>
@@ -292,9 +292,9 @@ export default function Discounts() {
             return (
               <Card key={discount.id}>
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <div className={`p-2 rounded-lg ${discount.discount_type === 'percentage' ? 'bg-indigo-100' : 'bg-emerald-100'}`}>
                           {discount.discount_type === 'percentage' ? (
                             <Percent className={`w-5 h-5 ${discount.discount_type === 'percentage' ? 'text-indigo-600' : 'text-emerald-600'}`} />
@@ -303,7 +303,7 @@ export default function Discounts() {
                           )}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                          <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                             {discount.name}
                           </h3>
                           <p className="text-lg font-bold text-indigo-600">
@@ -359,7 +359,7 @@ export default function Discounts() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button 
                         variant="ghost" 
                         size="icon"

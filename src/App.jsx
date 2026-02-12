@@ -273,20 +273,20 @@ function MobileHeader({ onMenuOpen }) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 flex items-center justify-between">
+    <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 flex items-center justify-between safe-top">
       <Logo size={32} />
       <div className="flex items-center gap-1">
         <NotificationsBell />
         <button
           onClick={toggleTheme}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300"
+          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 touch-target flex items-center justify-center"
           aria-label="Toggle theme"
         >
           {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         <button
           onClick={onMenuOpen}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300"
+          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 touch-target flex items-center justify-center"
         >
           <Menu size={24} />
         </button>
@@ -343,7 +343,7 @@ export default function App() {
         <MobileHeader onMenuOpen={() => setMobileMenuOpen(true)} />
         <DesktopHeader />
 
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 mt-16 lg:mt-0 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 mobile-main-offset overflow-x-hidden min-w-0">
           <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>

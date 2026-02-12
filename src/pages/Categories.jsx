@@ -134,16 +134,16 @@ export default function Categories() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
             Organize your products into categories
           </p>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button onClick={() => openDialog()} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Add Category
         </Button>
@@ -178,8 +178,8 @@ export default function Categories() {
                 style={{ backgroundColor: category.color }}
               />
               <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div 
                       className="w-10 h-10 rounded-lg flex items-center justify-center"
                       style={{ backgroundColor: `${category.color}20` }}
@@ -187,7 +187,7 @@ export default function Categories() {
                       {getIconComponent(category.icon)}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                      <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                         {category.name}
                       </h3>
                       {category.description && (
@@ -197,7 +197,7 @@ export default function Categories() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button 
                       variant="ghost" 
                       size="icon"

@@ -14,7 +14,7 @@ export function Card({ children, className = '', hover = false }) {
 
 export function CardHeader({ children, className = '' }) {
   return (
-    <div className={clsx('px-6 py-4 border-b border-slate-100 dark:border-slate-700', className)}>
+    <div className={clsx('px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-700', className)}>
       {children}
     </div>
   )
@@ -38,7 +38,7 @@ export function CardDescription({ children, className = '' }) {
 
 export function CardContent({ children, className = '' }) {
   return (
-    <div className={clsx('px-6 py-4', className)}>
+    <div className={clsx('px-4 sm:px-6 py-3 sm:py-4', className)}>
       {children}
     </div>
   )
@@ -46,7 +46,7 @@ export function CardContent({ children, className = '' }) {
 
 export function CardFooter({ children, className = '' }) {
   return (
-    <div className={clsx('px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 rounded-b-xl', className)}>
+    <div className={clsx('px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 rounded-b-xl', className)}>
       {children}
     </div>
   )

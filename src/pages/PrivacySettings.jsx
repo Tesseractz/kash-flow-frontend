@@ -175,14 +175,14 @@ export default function PrivacySettings() {
   const pendingExport = exportRequests.find(r => r.status === 'pending' || r.status === 'processing')
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full min-w-0">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <Shield className="w-7 h-7 text-blue-600" />
-          Privacy & Security
+      <div className="min-w-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3 flex-wrap">
+          <Shield className="w-7 h-7 text-blue-600 flex-shrink-0" />
+          <span className="break-words">Privacy & Security</span>
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm sm:text-base">
           Manage your privacy preferences, data, and account security
         </p>
       </div>
@@ -196,15 +196,15 @@ export default function PrivacySettings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between py-3 border-b dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <Mail className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="font-medium">Marketing Emails</p>
-                <p className="text-sm text-gray-500">Receive updates about new features and offers</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3 border-b dark:border-gray-700">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <Mail className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white">Marketing Emails</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Receive updates about new features and offers</p>
               </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 self-start sm:self-center">
               <input
                 type="checkbox"
                 checked={settings?.marketing_emails_enabled || false}
@@ -216,15 +216,15 @@ export default function PrivacySettings() {
             </label>
           </div>
 
-          <div className="flex items-center justify-between py-3 border-b dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="font-medium">Push Notifications</p>
-                <p className="text-sm text-gray-500">Receive real-time alerts in your browser</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3 border-b dark:border-gray-700">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <Bell className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white">Push Notifications</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Receive real-time alerts in your browser</p>
               </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 self-start sm:self-center">
               <input
                 type="checkbox"
                 checked={settings?.push_notifications_enabled || false}
@@ -236,15 +236,15 @@ export default function PrivacySettings() {
             </label>
           </div>
 
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="font-medium">Analytics & Improvements</p>
-                <p className="text-sm text-gray-500">Help us improve by sharing usage data</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <BarChart3 className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white">Analytics & Improvements</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Help us improve by sharing usage data</p>
               </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 self-start sm:self-center">
               <input
                 type="checkbox"
                 checked={settings?.data_analytics_enabled || false}

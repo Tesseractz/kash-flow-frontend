@@ -168,23 +168,23 @@ export default function Customers() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Customers</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Customers</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
             Manage your customer database and loyalty program
           </p>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button onClick={() => openDialog()} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Add Customer
         </Button>
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
+      <div className="relative w-full max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         <Input
           placeholder="Search by name, email, or phone..."
@@ -281,8 +281,8 @@ export default function Customers() {
           {customers.map((customer) => (
             <Card key={customer.id} className={!customer.is_active ? 'opacity-60' : ''}>
               <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
                       {customer.name.charAt(0).toUpperCase()}
                     </div>
@@ -298,16 +298,16 @@ export default function Customers() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {customer.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {customer.email}
+                          <span className="flex items-center gap-1 min-w-0 truncate max-w-full">
+                            <Mail className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{customer.email}</span>
                           </span>
                         )}
                         {customer.phone && (
                           <span className="flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
+                            <Phone className="w-3 h-3 flex-shrink-0" />
                             {customer.phone}
                           </span>
                         )}
@@ -315,7 +315,7 @@ export default function Customers() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-6 text-sm">
+                  <div className="flex items-center gap-2 sm:gap-6 text-sm flex-shrink-0">
                     <div className="text-center hidden md:block">
                       <p className="text-gray-500">Spent</p>
                       <p className="font-semibold">{formatCurrency(customer.total_spent)}</p>
@@ -325,9 +325,9 @@ export default function Customers() {
                       <p className="font-semibold">{customer.total_visits || 0}</p>
                     </div>
                     
-                    <div className="flex gap-1">
-                      <Button 
-                        variant="ghost" 
+<div className="flex gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={() => openHistory(customer)}
                         title="View History"

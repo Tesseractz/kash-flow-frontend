@@ -11,8 +11,8 @@ export function DataTable({ columns, data, initialSorting = [] }) {
     getSortedRowModel: getSortedRowModel(),
   })
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full border rounded-md">
+    <div className="overflow-x-auto max-w-full table-container">
+      <table className="min-w-full border rounded-md table">
         <thead className="bg-gray-50">
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>

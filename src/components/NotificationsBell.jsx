@@ -115,7 +115,7 @@ export default function NotificationsBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 transition-colors"
+        className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 transition-colors touch-target flex items-center justify-center"
         aria-label="Notifications"
       >
         <Bell size={20} />
@@ -129,16 +129,16 @@ export default function NotificationsBell() {
       {open && (
         <div
           className={clsx(
-            "absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden"
+            "absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden"
           )}
         >
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-800 dark:text-white">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-800 dark:text-white truncate min-w-0">
               Notifications
             </p>
             <Link
               to="/profile"
-              className="text-xs text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+              className="text-xs text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 flex-shrink-0 touch-target"
               onClick={() => setOpen(false)}
             >
               <Settings size={14} />
@@ -154,13 +154,13 @@ export default function NotificationsBell() {
           )}
 
           {isOnline && (
-            <div className="max-h-96 overflow-auto">
+            <div className="max-h-[70vh] overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
+                  <div className="p-2 rounded-lg bg-amber-100 text-amber-600 flex-shrink-0">
                     <AlertTriangle size={16} />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-800 dark:text-white">
                       Low stock alerts
                     </p>
@@ -170,7 +170,7 @@ export default function NotificationsBell() {
                         : "Upgrade to Pro to enable alerts"}
                     </p>
                     {canViewLowStock && (
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Link
                           to="/products"
                           className="text-xs text-blue-600 hover:text-blue-700"
@@ -201,18 +201,18 @@ export default function NotificationsBell() {
 
               <div className="px-4 py-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                  <div className="p-2 rounded-lg bg-blue-100 text-blue-600 flex-shrink-0">
                     <BarChart3 size={16} />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-800 dark:text-white">
                       Daily finance summary
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 break-words">
                       Sales: {totalSales} · Revenue: R {totalRevenue.toFixed(2)} ·
                       Profit: R {totalProfit.toFixed(2)}
                     </p>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Link
                         to="/reports"
                         className="text-xs text-blue-600 hover:text-blue-700"

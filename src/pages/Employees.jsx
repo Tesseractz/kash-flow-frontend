@@ -298,12 +298,12 @@ export default function Employees() {
       {isClockedIn && clockStatusData?.entry && (
         <Card className="border-green-500 bg-green-50 dark:bg-green-900/20">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-500 rounded-full animate-pulse">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 bg-green-500 rounded-full animate-pulse flex-shrink-0">
                   <Clock className="w-5 h-5 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-green-800 dark:text-green-200">
                     You are currently clocked in
                   </p>
@@ -378,7 +378,7 @@ export default function Employees() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="w-40">
+            <div className="w-full min-w-0 sm:w-40">
               <label className="block text-sm font-medium mb-1">From</label>
               <Input
                 type="date"
@@ -386,7 +386,7 @@ export default function Employees() {
                 onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
               />
             </div>
-            <div className="w-40">
+            <div className="w-full min-w-0 sm:w-40">
               <label className="block text-sm font-medium mb-1">To</label>
               <Input
                 type="date"

@@ -235,7 +235,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <AuthHeader />
           <Card>
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-4 sm:p-8 text-center">
               <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Mail className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
               </div>
@@ -275,7 +275,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <AuthHeader />
           <Card>
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-4 sm:p-8 text-center">
               <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <KeyRound className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
@@ -315,7 +315,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <AuthHeader />
           <Card>
-            <CardContent className="p-8">
+            <CardContent className="p-4 sm:p-8">
               <form onSubmit={onSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -388,7 +388,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <AuthHeader />
           <Card>
-            <CardContent className="p-8">
+            <CardContent className="p-4 sm:p-8">
               <form onSubmit={onSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -459,7 +459,7 @@ export default function AuthPage() {
         />
 
         <Card>
-          <CardContent className="p-8">
+          <CardContent className="p-4 sm:p-8">
             <form onSubmit={onSubmit} className="space-y-5">
               {mode === MODE.SIGN_UP && (
                 <div>
@@ -689,10 +689,10 @@ function AuthHeader({ subtitle }) {
 
 function AuthTopButtons({ theme, toggleTheme }) {
   return (
-    <div className="absolute top-4 right-4 flex items-center gap-2">
+    <div className="absolute top-4 right-4 flex items-center gap-2 safe-top">
       <button
         onClick={toggleTheme}
-        className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+        className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors touch-target flex items-center justify-center"
         aria-label="Toggle theme"
       >
         {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}

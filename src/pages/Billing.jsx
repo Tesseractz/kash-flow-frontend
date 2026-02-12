@@ -235,8 +235,8 @@ export default function Billing() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
+              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm min-w-0">
                 <Package className="w-5 h-5 mx-auto text-blue-600 dark:text-blue-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
                   {usage.products || 0}
@@ -246,11 +246,11 @@ export default function Billing() {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                   Products
                 </p>
               </div>
-              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm min-w-0">
                 <Users className="w-5 h-5 mx-auto text-purple-600 dark:text-purple-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
                   1
@@ -258,11 +258,11 @@ export default function Billing() {
                     /{limits.max_users || 1}
                   </span>
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                   Users
                 </p>
               </div>
-              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm min-w-0">
                 <FileText className="w-5 h-5 mx-auto text-emerald-600 dark:text-emerald-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
                   {limits.csv_export ? (
@@ -271,11 +271,11 @@ export default function Billing() {
                     "—"
                   )}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                   CSV Export
                 </p>
               </div>
-              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+              <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm min-w-0">
                 <Bell className="w-5 h-5 mx-auto text-amber-600 dark:text-amber-400 mb-1" />
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
                   {limits.low_stock_alerts ? (
@@ -284,7 +284,7 @@ export default function Billing() {
                     "—"
                   )}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                   Alerts
                 </p>
               </div>
@@ -359,7 +359,7 @@ export default function Billing() {
                   </span>
                 </div>
               )}
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div
                   className={`w-12 h-12 ${plan.iconBg} rounded-xl flex items-center justify-center mb-4`}
                 >

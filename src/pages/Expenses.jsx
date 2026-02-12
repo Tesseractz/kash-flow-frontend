@@ -274,7 +274,7 @@ export default function Expenses() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 w-full min-w-0 sm:min-w-[200px]">
               <label className="block text-sm font-medium mb-1">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -286,7 +286,7 @@ export default function Expenses() {
                 />
               </div>
             </div>
-            <div className="w-48">
+            <div className="w-full min-w-0 sm:w-48">
               <label className="block text-sm font-medium mb-1">Category</label>
               <select
                 className="w-full px-3 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700"
@@ -299,7 +299,7 @@ export default function Expenses() {
                 ))}
               </select>
             </div>
-            <div className="w-40">
+            <div className="w-full min-w-0 sm:w-40">
               <label className="block text-sm font-medium mb-1">From</label>
               <Input
                 type="date"
@@ -307,7 +307,7 @@ export default function Expenses() {
                 onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
               />
             </div>
-            <div className="w-40">
+            <div className="w-full min-w-0 sm:w-40">
               <label className="block text-sm font-medium mb-1">To</label>
               <Input
                 type="date"
@@ -336,8 +336,8 @@ export default function Expenses() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto table-container">
+              <table className="w-full text-sm table min-w-[600px]">
                 <thead>
                   <tr className="border-b dark:border-gray-700">
                     <th className="text-left py-3 px-4">Date</th>

@@ -15,7 +15,6 @@ import {
   Store,
   Lock,
   CreditCard,
-  Trash2,
   LogOut,
   Shield,
   Bell,
@@ -46,11 +45,6 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
-
-  // Delete account state
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Subscription state
   const [portalLoading, setPortalLoading] = useState(false);
@@ -171,25 +165,6 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmText !== "DELETE") {
-      toast.error('Please type "DELETE" to confirm');
-      return;
-    }
-
-    setDeleteLoading(true);
-    try {
-      // Sign out and show message (actual deletion would need backend support)
-      toast.success("Account deletion requested. You will be signed out.");
-      await signOut();
-      navigate("/auth");
-    } catch (error) {
-      toast.error("Failed to process account deletion");
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -289,12 +264,12 @@ export default function Profile() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg flex-shrink-0">
               {user?.email?.charAt(0).toUpperCase() || "U"}
             </div>
-            <div className="flex-1">
-              <p className="text-lg font-semibold text-slate-800 dark:text-white">
+            <div className="flex-1 min-w-0">
+              <p className="text-lg font-semibold text-slate-800 dark:text-white truncate">
                 {user?.email || "User"}
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -344,8 +319,8 @@ export default function Profile() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
@@ -521,7 +496,7 @@ export default function Profile() {
             />
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Low Stock Threshold
@@ -538,17 +513,17 @@ export default function Profile() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 sm:flex-1">
               <input
                 id="daily-summary-toggle"
                 type="checkbox"
                 checked={dailySummaryEnabled}
                 onChange={(e) => setDailySummaryEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
               />
               <label
                 htmlFor="daily-summary-toggle"
-                className="text-sm text-slate-700 dark:text-slate-200"
+                className="text-sm text-slate-700 dark:text-slate-200 cursor-pointer select-none min-w-0"
               >
                 Enable daily summary emails
               </label>
@@ -560,6 +535,7 @@ export default function Profile() {
               size="sm"
               onClick={handleSaveNotifications}
               disabled={saveNotificationsMutation.isLoading}
+              className="w-full sm:w-auto"
             >
               {saveNotificationsMutation.isLoading ? "Saving..." : "Save Settings"}
             </Button>
@@ -574,6 +550,7 @@ export default function Profile() {
                 })
               }
               disabled={!emailReady || sendDailySummaryMutation.isLoading}
+              className="w-full sm:w-auto"
             >
               Email daily summary now
             </Button>
@@ -588,6 +565,7 @@ export default function Profile() {
                 })
               }
               disabled={!emailReady || sendLowStockMutation.isLoading}
+              className="w-full sm:w-auto"
             >
               Email low stock now
             </Button>
@@ -684,78 +662,6 @@ export default function Profile() {
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400" />
           </button>
-
-          {!showDeleteConfirm ? (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors border border-red-200 dark:border-red-800"
-            >
-              <div className="flex items-center gap-3">
-                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
-                <div className="text-left">
-                  <p className="font-medium text-red-700 dark:text-red-300">
-                    Delete Account
-                  </p>
-                  <p className="text-xs text-red-600/70 dark:text-red-400/70">
-                    Permanently delete your account and all data
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-red-400" />
-            </button>
-          ) : (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-              <div className="flex items-start gap-3 mb-4">
-                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-red-700 dark:text-red-300">
-                    Are you absolutely sure?
-                  </p>
-                  <p className="text-sm text-red-600/80 dark:text-red-400/80 mt-1">
-                    This action cannot be undone. This will permanently delete your account, all your products, sales history, and remove all associated data.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm text-red-700 dark:text-red-300 block mb-1">
-                    Type <strong>DELETE</strong> to confirm:
-                  </label>
-                  <input
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white"
-                    placeholder="DELETE"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowDeleteConfirm(false);
-                      setDeleteConfirmText("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="bg-red-600 hover:bg-red-700"
-                    onClick={handleDeleteAccount}
-                    disabled={deleteLoading || deleteConfirmText !== "DELETE"}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    {deleteLoading ? "Deleting..." : "Delete Account"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
