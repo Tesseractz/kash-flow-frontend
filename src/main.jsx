@@ -15,11 +15,8 @@ import AuthPage from './pages/Auth'
 import Billing from './pages/Billing'
 import Profile from './pages/Profile'
 import Users from './pages/Users'
-import Categories from './pages/Categories'
 import Customers from './pages/Customers'
-import Discounts from './pages/Discounts'
 import Expenses from './pages/Expenses'
-import Employees from './pages/Employees'
 import PrivacySettings from './pages/PrivacySettings'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
@@ -91,14 +88,6 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "/categories",
-        element: (
-          <ProtectedRoute adminOnly>
-            <Categories />
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: "/customers",
         element: (
           <ProtectedRoute adminOnly>
@@ -107,26 +96,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "/discounts",
-        element: (
-          <ProtectedRoute adminOnly>
-            <Discounts />
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: "/expenses",
         element: (
           <ProtectedRoute adminOnly>
             <Expenses />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/employees",
-        element: (
-          <ProtectedRoute adminOnly>
-            <Employees />
           </ProtectedRoute>
         ),
       },

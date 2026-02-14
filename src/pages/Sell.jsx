@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CategoriesAPI, CustomersAPI, DiscountsAPI } from "../api/client";
+import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CustomersAPI } from "../api/client";
 import toast from "react-hot-toast";
 import { Button } from "../components/ui/Button";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
@@ -42,7 +42,6 @@ import {
   ArrowLeftRight,
   Tag,
   User,
-  Percent,
   Gift,
 } from "lucide-react";
 
@@ -95,29 +94,15 @@ export default function Sell() {
   const [receiptEmail, setReceiptEmail] = useState("");
   const [sendingReceipt, setSendingReceipt] = useState(false);
 
-  // Category filter
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  
-  // Customer and Discount for checkout
+  // Customer for checkout
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
-  const [discountCode, setDiscountCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(null);
-  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
-
   const productsQuery = useQuery({
     queryKey: ["products-for-sale"],
     queryFn: () => ProductsAPI.list({ page: 1, page_size: 1000 }),
     staleTime: 60000,
     refetchOnWindowFocus: false,
-  });
-
-  // Fetch categories
-  const categoriesQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => CategoriesAPI.list(),
-    staleTime: 60000,
   });
 
   // Fetch customers for search
@@ -175,11 +160,6 @@ export default function Sell() {
   const filteredProducts = useMemo(() => {
     let products = allProducts;
     
-    // Filter by category
-    if (selectedCategory) {
-      products = products.filter(p => p.category_id === selectedCategory);
-    }
-    
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -191,7 +171,7 @@ export default function Sell() {
     }
     
     return products;
-  }, [allProducts, searchQuery, selectedCategory]);
+  }, [allProducts, searchQuery]);
 
   const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
 
@@ -213,9 +193,7 @@ export default function Sell() {
     );
   }, [cart]);
 
-  // Apply discount to get final total
-  const discountAmount = appliedDiscount?.discount_amount || 0;
-  const cartTotal = Math.max(0, cartSubtotal - discountAmount);
+  const cartTotal = cartSubtotal;
 
   const cartItemCount = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -228,32 +206,6 @@ export default function Sell() {
     cart.length > 0 &&
     (paymentMethod === "card" || paymentAmountNum >= cartTotal);
 
-  // Apply discount code
-  const handleApplyDiscount = async () => {
-    if (!discountCode.trim()) return;
-    setIsApplyingDiscount(true);
-    try {
-      const result = await DiscountsAPI.apply(
-        discountCode, 
-        cartSubtotal, 
-        selectedCustomer?.id
-      );
-      setAppliedDiscount(result);
-      toast.success(`Discount applied: -R${result.discount_amount.toFixed(2)}`);
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Invalid discount code");
-      setAppliedDiscount(null);
-    } finally {
-      setIsApplyingDiscount(false);
-    }
-  };
-
-  // Remove applied discount
-  const removeDiscount = () => {
-    setAppliedDiscount(null);
-    setDiscountCode("");
-  };
-
   // Select customer
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
@@ -263,13 +215,7 @@ export default function Sell() {
   };
 
   // Clear customer
-  const clearCustomer = () => {
-    setSelectedCustomer(null);
-    // If discount was per-customer, remove it too
-    if (appliedDiscount) {
-      removeDiscount();
-    }
-  };
+  const clearCustomer = () => setSelectedCustomer(null);
 
   // Cart functions
   const addToCart = (product) => {
@@ -327,8 +273,6 @@ export default function Sell() {
     setPaymentMethod("cash");
     setReturnReason("");
     setSelectedCustomer(null);
-    setDiscountCode("");
-    setAppliedDiscount(null);
     setShowCustomerSearch(false);
     setCustomerSearch("");
   };
@@ -704,39 +648,6 @@ export default function Sell() {
                   />
                 </div>
 
-                {/* Category Filter */}
-                {Array.isArray(categoriesQuery.data) && categoriesQuery.data.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => { setSelectedCategory(null); setCurrentPage(1); }}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        !selectedCategory
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                      }`}
-                    >
-                      All
-                    </button>
-                    {categoriesQuery.data.map((cat) => (
-                      <button
-                        key={cat.id}
-                        onClick={() => { setSelectedCategory(cat.id); setCurrentPage(1); }}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                          selectedCategory === cat.id
-                            ? "text-white"
-                            : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                        }`}
-                        style={selectedCategory === cat.id ? { backgroundColor: cat.color } : {}}
-                      >
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto pb-4 px-4 py-3 sm:px-6 sm:py-4">
@@ -1258,50 +1169,6 @@ export default function Sell() {
           </div>
         )}
 
-        {/* Discount Code (Sale mode only) */}
-        {mode === "sale" && cart.length > 0 && (
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Discount Code
-            </label>
-            {appliedDiscount ? (
-              <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Percent size={16} className="text-green-600" />
-                  <div>
-                    <p className="font-medium text-sm text-green-700 dark:text-green-400">{appliedDiscount.discount_name}</p>
-                    <p className="text-xs text-green-600">-R{appliedDiscount.discount_amount.toFixed(2)}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={removeDiscount}
-                  className="p-1 hover:bg-green-100 dark:hover:bg-green-800 rounded"
-                >
-                  <X size={16} className="text-slate-500" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter code"
-                  value={discountCode}
-                  onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm"
-                />
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={handleApplyDiscount}
-                  disabled={!discountCode.trim() || isApplyingDiscount}
-                >
-                  {isApplyingDiscount ? "..." : "Apply"}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Payment Method (Sale mode only) */}
         {mode === "sale" && (
           <div>
@@ -1403,34 +1270,9 @@ export default function Sell() {
 
         {/* Total & Change / Refund */}
         <div className={`pt-4 border-t space-y-3 ${mode === "return" ? "border-amber-200 dark:border-amber-700" : "border-slate-200 dark:border-slate-700"}`}>
-          {/* Subtotal (show if discount applied) */}
-          {mode === "sale" && appliedDiscount && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-500 dark:text-slate-400">
-                Subtotal ({cartItemCount} items)
-              </span>
-              <span className="text-slate-600 dark:text-slate-300">
-                R {cartSubtotal.toFixed(2)}
-              </span>
-            </div>
-          )}
-
-          {/* Discount (show if applied) */}
-          {mode === "sale" && appliedDiscount && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
-                <Percent size={12} />
-                {appliedDiscount.discount_name}
-              </span>
-              <span className="text-green-600 dark:text-green-400 font-medium">
-                -R {appliedDiscount.discount_amount.toFixed(2)}
-              </span>
-            </div>
-          )}
-
           <div className="flex justify-between items-center">
             <span className="text-slate-600 dark:text-slate-400 font-medium">
-              {mode === "return" ? "Refund Total" : t("sell.total")} {!appliedDiscount && `(${cartItemCount} items)`}
+              {mode === "return" ? "Refund Total" : t("sell.total")} ({cartItemCount} items)
             </span>
             <span className={`text-xl sm:text-3xl font-bold ${mode === "return" ? "text-amber-600 dark:text-amber-400" : "text-slate-800 dark:text-white"}`}>
               R {cartTotal.toFixed(2)}

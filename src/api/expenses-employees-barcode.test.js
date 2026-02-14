@@ -36,7 +36,7 @@ vi.mock('../lib/supabase', () => ({
   },
 }))
 
-describe('Expenses, Employees, and Barcode APIs', () => {
+describe('Expenses and Barcode APIs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGet.mockReset()
@@ -143,158 +143,6 @@ describe('Expenses, Employees, and Barcode APIs', () => {
   })
 
   // ============================================
-  // SHIFTS API TESTS
-  // ============================================
-  describe('ShiftsAPI', () => {
-    it('should list shifts', async () => {
-      const mockShifts = [
-        { id: 'shift-1', user_id: 'user-1', shift_date: '2026-02-09' },
-      ]
-      mockGet.mockResolvedValueOnce({ data: mockShifts })
-
-      const { ShiftsAPI } = await import('./client.js')
-      const result = await ShiftsAPI.list()
-
-      expect(result).toEqual(mockShifts)
-      expect(mockGet).toHaveBeenCalledWith('/shifts', { params: {} })
-    })
-
-    it('should create a shift', async () => {
-      const newShift = {
-        user_id: 'user-1',
-        shift_date: '2026-02-10',
-        scheduled_start: '09:00',
-        scheduled_end: '17:00',
-      }
-      const createdShift = { id: 'shift-1', ...newShift }
-      mockPost.mockResolvedValueOnce({ data: createdShift })
-
-      const { ShiftsAPI } = await import('./client.js')
-      const result = await ShiftsAPI.create(newShift)
-
-      expect(result).toEqual(createdShift)
-      expect(mockPost).toHaveBeenCalledWith('/shifts', newShift)
-    })
-
-    it('should update a shift', async () => {
-      const updatedShift = { id: 'shift-1', status: 'completed' }
-      mockPut.mockResolvedValueOnce({ data: updatedShift })
-
-      const { ShiftsAPI } = await import('./client.js')
-      const result = await ShiftsAPI.update('shift-1', { status: 'completed' })
-
-      expect(result).toEqual(updatedShift)
-      expect(mockPut).toHaveBeenCalledWith('/shifts/shift-1', { status: 'completed' })
-    })
-
-    it('should delete a shift', async () => {
-      mockDelete.mockResolvedValueOnce({ data: null })
-
-      const { ShiftsAPI } = await import('./client.js')
-      await ShiftsAPI.remove('shift-1')
-
-      expect(mockDelete).toHaveBeenCalledWith('/shifts/shift-1')
-    })
-  })
-
-  // ============================================
-  // TIME CLOCK API TESTS
-  // ============================================
-  describe('TimeClockAPI', () => {
-    it('should list time entries', async () => {
-      const mockEntries = [
-        { id: 'entry-1', clock_in: '2026-02-09T09:00:00Z', clock_out: '2026-02-09T17:00:00Z' },
-      ]
-      mockGet.mockResolvedValueOnce({ data: mockEntries })
-
-      const { TimeClockAPI } = await import('./client.js')
-      const result = await TimeClockAPI.list()
-
-      expect(result).toEqual(mockEntries)
-      expect(mockGet).toHaveBeenCalledWith('/time-clock', { params: {} })
-    })
-
-    it('should clock in', async () => {
-      const mockEntry = { id: 'entry-1', clock_in: '2026-02-09T09:00:00Z' }
-      mockPost.mockResolvedValueOnce({ data: mockEntry })
-
-      const { TimeClockAPI } = await import('./client.js')
-      const result = await TimeClockAPI.clockIn()
-
-      expect(result.clock_in).toBeDefined()
-      expect(mockPost).toHaveBeenCalledWith('/time-clock/clock-in', {})
-    })
-
-    it('should clock out', async () => {
-      const mockEntry = {
-        id: 'entry-1',
-        clock_in: '2026-02-09T09:00:00Z',
-        clock_out: '2026-02-09T17:00:00Z',
-        total_hours: 8.0,
-      }
-      mockPost.mockResolvedValueOnce({ data: mockEntry })
-
-      const { TimeClockAPI } = await import('./client.js')
-      const result = await TimeClockAPI.clockOut()
-
-      expect(result.clock_out).toBeDefined()
-      expect(result.total_hours).toBe(8.0)
-      expect(mockPost).toHaveBeenCalledWith('/time-clock/clock-out', {})
-    })
-
-    it('should get current clock status', async () => {
-      const mockStatus = { clocked_in: true, entry: { id: 'entry-1' } }
-      mockGet.mockResolvedValueOnce({ data: mockStatus })
-
-      const { TimeClockAPI } = await import('./client.js')
-      const result = await TimeClockAPI.getCurrentStatus()
-
-      expect(result.clocked_in).toBe(true)
-      expect(mockGet).toHaveBeenCalledWith('/time-clock/current')
-    })
-  })
-
-  // ============================================
-  // COMMISSIONS API TESTS
-  // ============================================
-  describe('CommissionsAPI', () => {
-    it('should list commissions', async () => {
-      const mockCommissions = [
-        { id: 'comm-1', user_id: 'user-1', commission_amount: 50 },
-      ]
-      mockGet.mockResolvedValueOnce({ data: mockCommissions })
-
-      const { CommissionsAPI } = await import('./client.js')
-      const result = await CommissionsAPI.list()
-
-      expect(result).toEqual(mockCommissions)
-      expect(mockGet).toHaveBeenCalledWith('/commissions', { params: {} })
-    })
-
-    it('should approve a commission', async () => {
-      const mockCommission = { id: 'comm-1', status: 'approved' }
-      mockPost.mockResolvedValueOnce({ data: mockCommission })
-
-      const { CommissionsAPI } = await import('./client.js')
-      const result = await CommissionsAPI.approve('comm-1')
-
-      expect(result.status).toBe('approved')
-      expect(mockPost).toHaveBeenCalledWith('/commissions/comm-1/approve')
-    })
-
-    it('should mark commission as paid', async () => {
-      const mockCommission = { id: 'comm-1', status: 'paid' }
-      mockPost.mockResolvedValueOnce({ data: mockCommission })
-
-      const { CommissionsAPI } = await import('./client.js')
-      const result = await CommissionsAPI.markPaid('comm-1')
-
-      expect(result.status).toBe('paid')
-      expect(mockPost).toHaveBeenCalledWith('/commissions/comm-1/pay')
-    })
-  })
-
-  // ============================================
   // BARCODE API TESTS
   // ============================================
   describe('BarcodeAPI', () => {
@@ -358,28 +206,6 @@ describe('Expenses, Employees, and Barcode APIs', () => {
       expect(result.total_revenue).toBe(10000)
       expect(result.net_profit).toBe(2000)
       expect(mockGet).toHaveBeenCalledWith('/reports/profit-loss', {
-        params: { start_date: '2026-02-01', end_date: '2026-02-28' },
-      })
-    })
-
-    it('should get employee sales report', async () => {
-      const mockReport = [
-        {
-          user_id: 'user-1',
-          user_name: 'John Doe',
-          total_sales: 50,
-          total_revenue: 5000,
-          commission_earned: 250,
-        },
-      ]
-      mockGet.mockResolvedValueOnce({ data: mockReport })
-
-      const { EnhancedReportsAPI } = await import('./client.js')
-      const result = await EnhancedReportsAPI.getEmployeeSales('2026-02-01', '2026-02-28')
-
-      expect(result).toHaveLength(1)
-      expect(result[0].total_revenue).toBe(5000)
-      expect(mockGet).toHaveBeenCalledWith('/reports/employee-sales', {
         params: { start_date: '2026-02-01', end_date: '2026-02-28' },
       })
     })

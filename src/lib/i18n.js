@@ -23,11 +23,8 @@ const en = {
     nav: {
       products: 'Products',
       sell: 'Sell',
-      categories: 'Categories',
       customers: 'Customers',
-      discounts: 'Discounts',
       expenses: 'Expenses',
-      employees: 'Employees',
       users: 'Team',
       privacy: 'Privacy & Security',
       reports: 'Reports',

@@ -12,11 +12,8 @@ import {
   Moon,
   Settings,
   ChevronDown,
-  Tag,
   Users,
-  Percent,
   Receipt,
-  Clock,
   Shield,
 } from "lucide-react";
 import { useAuth } from "./context/AuthContext";
@@ -32,11 +29,8 @@ import CookieConsent from "./components/CookieConsent";
 const navItems = [
   { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell", adminOnly: false },
   { to: "/products", icon: Package, labelKey: "nav.products", adminOnly: false },
-  { to: "/categories", icon: Tag, labelKey: "nav.categories", adminOnly: true },
   { to: "/customers", icon: Users, labelKey: "nav.customers", adminOnly: true },
-  { to: "/discounts", icon: Percent, labelKey: "nav.discounts", adminOnly: true },
   { to: "/expenses", icon: Receipt, labelKey: "nav.expenses", adminOnly: true },
-  { to: "/employees", icon: Clock, labelKey: "nav.employees", adminOnly: true },
   { to: "/users", icon: User, labelKey: "nav.users", adminOnly: true },
   { to: "/reports", icon: BarChart3, labelKey: "nav.reports", adminOnly: true },
   { to: "/billing", icon: CreditCard, labelKey: "nav.billing", adminOnly: true },

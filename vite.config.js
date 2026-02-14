@@ -16,6 +16,7 @@ export default defineConfig({
     proxy: {
       '/products': 'http://localhost:8000',
       '/sales': 'http://localhost:8000',
+      '/returns': 'http://localhost:8000',
       '/reports': 'http://localhost:8000',
       '/billing': 'http://localhost:8000',
       '/stripe': 'http://localhost:8000',
