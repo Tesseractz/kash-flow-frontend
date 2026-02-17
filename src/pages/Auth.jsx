@@ -675,7 +675,7 @@ function AuthHeader({ subtitle }) {
       </div>
       <h1 className="text-2xl sm:text-3xl font-bold">
         <span className="text-emerald-600 dark:text-emerald-400">Kash</span>
-        <span className="text-amber-500 dark:text-amber-400">-Flow</span>
+        <span className="text-amber-500 dark:text-amber-400">Point</span>
       </h1>
       <p className="text-sm text-slate-500 dark:text-slate-400 tracking-wide uppercase mt-1">
         Point of Sale

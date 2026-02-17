@@ -5,7 +5,7 @@ import { initReactI18next } from 'react-i18next'
 const en = {
   translation: {
     // Common
-    app_name: 'Kash-Flow',
+    app_name: 'KashPoint',
     loading: 'Loading...',
     save: 'Save',
     cancel: 'Cancel',

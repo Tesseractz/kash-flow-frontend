@@ -29,15 +29,15 @@ export default function Terms() {
 
             <h2>1. Acceptance of Terms</h2>
             <p>
-              By accessing and using Kash-Flow ("the Service"), you accept and agree to be bound by 
+              By accessing and using KashPoint ("the Service"), you accept and agree to be bound by 
               the terms and conditions outlined in this agreement. If you do not agree to these terms, 
               please do not use our Service.
             </p>
 
             <h2>2. Description of Service</h2>
             <p>
-              Kash-Flow is a point-of-sale (POS) software solution that enables businesses to manage 
-              sales, inventory, employees, and reporting. The Service may include various features 
+KashPoint is a point-of-sale (POS) software solution that enables businesses to manage
+              sales, inventory, and reporting. The Service may include various features 
               based on your subscription plan.
             </p>
 
@@ -84,7 +84,7 @@ export default function Terms() {
 
             <h2>8. Limitation of Liability</h2>
             <p>
-              To the maximum extent permitted by law, Kash-Flow shall not be liable for any indirect, 
+              To the maximum extent permitted by law, KashPoint shall not be liable for any indirect, 
               incidental, special, consequential, or punitive damages, including loss of profits, 
               data, or business opportunities.
             </p>
@@ -112,7 +112,7 @@ export default function Terms() {
             <p>
               For questions about these Terms, please contact us at:
               <br />
-              <strong>Email:</strong> legal@kash-flow.com
+              <strong>Email:</strong> legal@kashpoint.com
               <br />
               <strong>Address:</strong> [Your Business Address]
             </p>

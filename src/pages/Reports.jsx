@@ -23,7 +23,7 @@ import toast from 'react-hot-toast'
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { loadFromStorage, saveToStorage } from "../lib/offlineStorage";
 
-const REPORT_CACHE_KEY = "kashflow_reports_cache_v2";
+const REPORT_CACHE_KEY = "kashpoint_reports_cache_v2";
 
 export default function Reports() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
@@ -390,7 +390,7 @@ export default function Reports() {
                       </div>
                       <div 
                         ref={trendChartRef}
-                        className="h-40 flex items-end gap-1 overflow-x-auto pb-6"
+                        className="h-40 flex items-stretch gap-1 overflow-x-auto pb-6"
                       >
                         {(analyticsData.sales_trends || []).map((day, i) => {
                           const revenue = typeof day.revenue === 'number' ? day.revenue : parseFloat(day.revenue) || 0
@@ -402,9 +402,9 @@ export default function Reports() {
                           const hasSales = revenue > 0
 
                           return (
-                            <div key={`${day.date}-${i}`} className="flex-1 min-w-[6px] group relative">
+                            <div key={`${day.date}-${i}`} className="flex-1 min-w-[6px] h-full min-h-0 flex flex-col justify-end group relative">
                               <div
-                                className={`rounded-t transition-all ${
+                                className={`rounded-t transition-all flex-shrink-0 ${
                                   hasSales
                                     ? "bg-blue-500 dark:bg-blue-400 hover:bg-blue-600"
                                     : "bg-slate-200 dark:bg-slate-700 opacity-30"
@@ -446,14 +446,14 @@ export default function Reports() {
                       <p className="text-sm">No data available</p>
                     </div>
                   ) : (
-                    <div className="h-40 flex items-end gap-1">
+                    <div className="h-40 flex items-stretch gap-1">
                       {(analyticsData.hourly_breakdown || []).map((hour) => {
                         const maxCount = Math.max(...(analyticsData.hourly_breakdown || []).map(h => h.sales_count)) || 1
                         const height = (hour.sales_count / maxCount) * 100
                         return (
-                          <div key={hour.hour} className="flex-1 group relative">
+                          <div key={hour.hour} className="flex-1 h-full min-h-0 flex flex-col justify-end group relative">
                             <div
-                              className="bg-purple-500 dark:bg-purple-400 rounded-t hover:bg-purple-600 transition-colors"
+                              className="bg-purple-500 dark:bg-purple-400 rounded-t hover:bg-purple-600 transition-colors flex-shrink-0"
                               style={{ height: `${Math.max(height, 2)}%` }}
                             />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">

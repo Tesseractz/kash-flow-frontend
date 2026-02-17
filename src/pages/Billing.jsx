@@ -451,7 +451,7 @@ export default function Billing() {
           <p className="text-slate-600 dark:text-slate-400">
             Need a custom plan for your enterprise?{" "}
             <a
-              href="mailto:support@kash-flow.com"
+              href="mailto:support@kashpoint.com"
               className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
             >
               Contact our sales team

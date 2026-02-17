@@ -175,7 +175,13 @@ function Sidebar({ mobile, onClose }) {
     >
       <div className="p-6 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center justify-between">
-          <Logo size={36} />
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-lg hover:opacity-90 active:opacity-80 transition-opacity outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+            onClick={mobile ? onClose : undefined}
+          >
+            <Logo size={36} />
+          </Link>
           {mobile && (
             <button
               onClick={onClose}

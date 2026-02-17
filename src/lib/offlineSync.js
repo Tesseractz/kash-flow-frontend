@@ -1,9 +1,9 @@
 import { loadFromStorage, saveToStorage } from "./offlineStorage";
 
-export const OFFLINE_SALES_KEY = "kashflow_offline_sales_v1";
-export const PRODUCT_CACHE_KEY = "kashflow_product_cache_v1";
-export const PRODUCT_OPS_KEY = "kashflow_product_ops_v1";
-export const PRODUCT_ID_MAP_KEY = "kashflow_product_id_map_v1";
+export const OFFLINE_SALES_KEY = "kashpoint_offline_sales_v1";
+export const PRODUCT_CACHE_KEY = "kashpoint_product_cache_v1";
+export const PRODUCT_OPS_KEY = "kashpoint_product_ops_v1";
+export const PRODUCT_ID_MAP_KEY = "kashpoint_product_id_map_v1";
 
 const getIdMap = () => loadFromStorage(PRODUCT_ID_MAP_KEY, {});
 const setIdMap = (map) => saveToStorage(PRODUCT_ID_MAP_KEY, map);

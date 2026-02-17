@@ -28,7 +28,7 @@ export default function Privacy() {
             </p>
 
             <p>
-              Kash-Flow ("we", "us", "our") is committed to protecting your privacy. This Privacy 
+              KashPoint ("we", "us", "our") is committed to protecting your privacy. This Privacy 
               Policy explains how we collect, use, disclose, and safeguard your information when 
               you use our point-of-sale service.
             </p>
@@ -100,7 +100,7 @@ export default function Privacy() {
             </ul>
             <p>
               To exercise these rights, visit Settings → Privacy & Security or contact us at 
-              privacy@kash-flow.com.
+              privacy@kashpoint.com.
             </p>
 
             <h2>7. Cookies</h2>
@@ -138,8 +138,8 @@ export default function Privacy() {
               For questions about this Privacy Policy or our data practices:
             </p>
             <ul>
-              <li><strong>Email:</strong> privacy@kash-flow.com</li>
-              <li><strong>Information Officer:</strong> [Name], io@kash-flow.com</li>
+              <li><strong>Email:</strong> privacy@kashpoint.com</li>
+              <li><strong>Information Officer:</strong> [Name], io@kashpoint.com</li>
               <li><strong>Address:</strong> [Your Business Address]</li>
             </ul>
 
