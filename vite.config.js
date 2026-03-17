@@ -29,6 +29,12 @@ export default defineConfig({
       '/audit-logs': 'http://localhost:8000',
       '/notifications': 'http://localhost:8000',
       '/receipts': 'http://localhost:8000',
+      '/customers': 'http://localhost:8000',
+      '/expenses': 'http://localhost:8000',
+      '/expense-categories': 'http://localhost:8000',
+      '/barcode': 'http://localhost:8000',
+      '/privacy': 'http://localhost:8000',
+      '/legal': 'http://localhost:8000',
     }
   }
 })

@@ -129,7 +129,10 @@ export default function NotificationsBell() {
       {open && (
         <div
           className={clsx(
-            "absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden"
+            // Mobile: fixed sheet (prevents off-screen clipping). >=sm: anchored popover.
+            "fixed left-2 right-2 top-[calc(4rem+var(--sat)+0.5rem)] w-auto max-w-none " +
+              "sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)] " +
+              "bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden"
           )}
         >
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">

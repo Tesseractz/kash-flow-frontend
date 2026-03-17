@@ -3,6 +3,14 @@ import { supabase } from '../lib/supabase'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || ''
 
+// Log once in production if API URL is missing (common Netlify/deploy mistake)
+if (!import.meta.env.DEV && !baseURL) {
+  console.error(
+    '[KashPoint] VITE_API_BASE_URL is not set. API requests will go to this domain and fail. ' +
+    'Set it in Netlify: Site settings → Environment variables → VITE_API_BASE_URL = your backend URL (e.g. https://your-api.fly.dev)'
+  )
+}
+
 export const api = axios.create({
   baseURL,
   headers: {
@@ -56,10 +64,19 @@ export const ReturnsAPI = {
   create: (data) => api.post('/returns', data).then(r => r.data),
 }
 
+function getReportParams(date) {
+  const params = { date_utc: date }
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (tz) params.timezone = tz
+  } catch (_) {}
+  return params
+}
+
 export const ReportsAPI = {
-  get: (date) => api.get('/reports', { params: { date_utc: date } }).then(r => r.data),
-  exportCSV: (date) => api.get('/reports/export', { 
-    params: { date_utc: date },
+  get: (date) => api.get('/reports', { params: getReportParams(date) }).then(r => r.data),
+  exportCSV: (date) => api.get('/reports/export', {
+    params: getReportParams(date),
     responseType: 'blob'
   }).then(r => r.data),
 }
@@ -220,5 +237,29 @@ if (import.meta.env.DEV) {
     }
   )
 }
+
+// Production: log helpful message on first API failure (network/404/CORS)
+let productionApiFailureLogged = false
+api.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    if (!import.meta.env.DEV && !productionApiFailureLogged) {
+      productionApiFailureLogged = true
+      const status = error.response?.status
+      const noResponse = error.code === 'ERR_NETWORK' || error.message === 'Network Error'
+      const hint = !baseURL
+        ? 'Set VITE_API_BASE_URL in Netlify (and redeploy) to your backend URL.'
+        : noResponse
+          ? 'Backend may be down or CORS may be blocking. Allow origin https://kash-flow.netlify.app in your API.'
+          : status === 404
+            ? 'Backend returned 404. Check that VITE_API_BASE_URL points to the correct API root.'
+            : ''
+      if (hint) {
+        console.error('[KashPoint] API request failed:', error.message, status || '', '\n→', hint)
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 

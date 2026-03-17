@@ -6,8 +6,7 @@ import { Input } from '../components/ui/Input'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/Dialog'
 import { 
-  Plus, Edit2, Trash2, Users, Search, Mail, Phone, 
-  MapPin, Star, ShoppingBag, Calendar, Gift, History 
+  Plus, Edit2, Trash2, Users, Search, Mail, Phone, History 
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -66,15 +65,6 @@ export default function Customers() {
       toast.success('Customer deleted!')
     },
     onError: (err) => toast.error(err.response?.data?.detail || 'Failed to delete customer'),
-  })
-
-  const addPointsMutation = useMutation({
-    mutationFn: ({ id, points }) => CustomersAPI.addPoints(id, points),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['customers'])
-      toast.success('Points added!')
-    },
-    onError: (err) => toast.error(err.response?.data?.detail || 'Failed to add points'),
   })
 
   const openDialog = (customer = null) => {
@@ -138,13 +128,6 @@ export default function Customers() {
     }
   }
 
-  const handleAddPoints = (customer) => {
-    const points = window.prompt('Enter points to add:', '10')
-    if (points && !isNaN(parseInt(points))) {
-      addPointsMutation.mutate({ id: customer.id, points: parseInt(points) })
-    }
-  }
-
   const formatCurrency = (amount) => `R${(amount || 0).toFixed(2)}`
   const formatDate = (dateStr) => {
     if (!dateStr) return '-'
@@ -174,7 +157,7 @@ export default function Customers() {
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Customers</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Manage your customer database and loyalty program
+            Manage your customer database
           </p>
         </div>
         <Button onClick={() => openDialog()} className="w-full sm:w-auto">
@@ -194,65 +177,17 @@ export default function Customers() {
         />
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Stats: Total Customers only */}
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Customers</p>
-                <p className="text-xl font-bold">{customers.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <ShoppingBag className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Revenue</p>
-                <p className="text-xl font-bold">
-                  {formatCurrency(customers.reduce((sum, c) => sum + (c.total_spent || 0), 0))}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Star className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Points</p>
-                <p className="text-xl font-bold">
-                  {customers.reduce((sum, c) => sum + (c.loyalty_points || 0), 0).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Calendar className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Avg. Visits</p>
-                <p className="text-xl font-bold">
-                  {customers.length > 0 
-                    ? (customers.reduce((sum, c) => sum + (c.total_visits || 0), 0) / customers.length).toFixed(1)
-                    : 0
-                  }
-                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Total Customers</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{customers.length}</p>
               </div>
             </div>
           </CardContent>
@@ -287,17 +222,9 @@ export default function Customers() {
                       {customer.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                          {customer.name}
-                        </h3>
-                        {customer.loyalty_points > 0 && (
-                          <span className="inline-flex items-center gap-1 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
-                            <Star className="w-3 h-3" />
-                            {customer.loyalty_points}
-                          </span>
-                        )}
-                      </div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                        {customer.name}
+                      </h3>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {customer.email && (
                           <span className="flex items-center gap-1 min-w-0 truncate max-w-full">
@@ -315,17 +242,7 @@ export default function Customers() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 sm:gap-6 text-sm flex-shrink-0">
-                    <div className="text-center hidden md:block">
-                      <p className="text-gray-500">Spent</p>
-                      <p className="font-semibold">{formatCurrency(customer.total_spent)}</p>
-                    </div>
-                    <div className="text-center hidden md:block">
-                      <p className="text-gray-500">Visits</p>
-                      <p className="font-semibold">{customer.total_visits || 0}</p>
-                    </div>
-                    
-<div className="flex gap-1 flex-shrink-0">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -333,14 +250,6 @@ export default function Customers() {
                         title="View History"
                       >
                         <History className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleAddPoints(customer)}
-                        title="Add Points"
-                      >
-                        <Gift className="w-4 h-4" />
                       </Button>
                       <Button 
                         variant="ghost" 
@@ -360,7 +269,6 @@ export default function Customers() {
                       </Button>
                     </div>
                   </div>
-                </div>
               </CardContent>
             </Card>
           ))}

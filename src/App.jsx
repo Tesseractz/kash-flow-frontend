@@ -274,7 +274,7 @@ function MobileHeader({ onMenuOpen }) {
 
   return (
     <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 flex items-center justify-between safe-top">
-      <Logo size={32} />
+      <Logo size={32} showText={false} />
       <div className="flex items-center gap-1">
         <NotificationsBell />
         <button

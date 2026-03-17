@@ -8,6 +8,12 @@ if (import.meta.env.DEV) {
   console.log('[Supabase] Anon key configured:', !!anon)
 }
 
+if (!import.meta.env.DEV && (!url || !anon)) {
+  console.error(
+    '[KashPoint] Supabase is not configured. Set in Netlify: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. Login will not work until you redeploy.'
+  )
+}
+
 export const supabase = (url && anon)
   ? createClient(url, anon, {
       auth: {

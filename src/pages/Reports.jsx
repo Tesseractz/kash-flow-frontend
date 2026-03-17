@@ -18,12 +18,13 @@ import {
   Package,
   RefreshCw,
   AlertCircle,
+  ImageIcon,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { loadFromStorage, saveToStorage } from "../lib/offlineStorage";
 
-const REPORT_CACHE_KEY = "kashpoint_reports_cache_v2";
+const REPORT_CACHE_KEY = "kashpoint_reports_cache_v3";
 
 export default function Reports() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
@@ -172,15 +173,15 @@ export default function Reports() {
             </select>
           )}
           
-          {/* Date picker */}
-          <div className="flex items-center gap-2">
+          {/* Date picker: filters Transaction History and Export */}
+          <div className="flex items-center gap-2" title="Transaction list and export use this date">
             <Calendar className="w-4 h-4 text-slate-400" />
             <input
               type="date"
               className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              aria-label="Select date"
+              aria-label="Select date for transaction list and export"
             />
           </div>
 
@@ -390,38 +391,46 @@ export default function Reports() {
                       </div>
                       <div 
                         ref={trendChartRef}
-                        className="h-40 flex items-stretch gap-1 overflow-x-auto pb-6"
+                        className="h-40 flex items-stretch gap-1 overflow-x-auto pb-10"
                       >
-                        {(analyticsData.sales_trends || []).map((day, i) => {
-                          const revenue = typeof day.revenue === 'number' ? day.revenue : parseFloat(day.revenue) || 0
-                          const maxRevenue = Math.max(...(analyticsData.sales_trends || []).map(d => 
-                            typeof d.revenue === 'number' ? d.revenue : parseFloat(d.revenue) || 0
-                          )) || 1
-                          const height = maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0
-                          const barHeight = revenue > 0 ? Math.max(height, 15) : 2
-                          const hasSales = revenue > 0
-
-                          return (
-                            <div key={`${day.date}-${i}`} className="flex-1 min-w-[6px] h-full min-h-0 flex flex-col justify-end group relative">
-                              <div
-                                className={`rounded-t transition-all flex-shrink-0 ${
-                                  hasSales
-                                    ? "bg-blue-500 dark:bg-blue-400 hover:bg-blue-600"
-                                    : "bg-slate-200 dark:bg-slate-700 opacity-30"
-                                }`}
-                                style={{ height: `${barHeight}%` }}
-                              />
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                {day.date}: R {revenue.toFixed(2)}
+                        {(() => {
+                          const trends = analyticsData.sales_trends || []
+                          const n = trends.length
+                          const maxLabels = 4
+                          const step = Math.max(1, Math.ceil(n / maxLabels))
+                          const showLabel = (i) => i % step === 0 || i === n - 1
+                          return trends.map((day, i) => {
+                            const revenue = typeof day.revenue === 'number' ? day.revenue : parseFloat(day.revenue) || 0
+                            const maxRevenue = Math.max(...trends.map(d => typeof d.revenue === 'number' ? d.revenue : parseFloat(d.revenue) || 0)) || 1
+                            const height = maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0
+                            const barHeight = revenue > 0 ? Math.max(height, 15) : 2
+                            const hasSales = revenue > 0
+                            const labelVisible = showLabel(i)
+                            return (
+                              <div key={`${day.date}-${i}`} className="flex-1 min-w-[6px] h-full min-h-0 flex flex-col justify-end group relative">
+                                <div
+                                  className={`rounded-t transition-all flex-shrink-0 ${
+                                    hasSales
+                                      ? "bg-blue-500 dark:bg-blue-400 hover:bg-blue-600"
+                                      : "bg-slate-200 dark:bg-slate-700 opacity-30"
+                                  }`}
+                                  style={{ height: `${barHeight}%` }}
+                                />
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                  {day.date}: R {revenue.toFixed(2)}
+                                </div>
+                                {labelVisible && (
+                                  <span
+                                    className={`absolute left-1/2 top-full mt-1.5 text-[9px] whitespace-nowrap ${hasSales ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-400'}`}
+                                    style={{ transform: 'translateX(-50%) rotate(-45deg)', transformOrigin: 'top center' }}
+                                  >
+                                    {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </span>
+                                )}
                               </div>
-                              {(hasSales || i % 7 === 0) && (
-                                <span className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] whitespace-nowrap ${hasSales ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-400'}`}>
-                                  {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })}
+                            )
+                          })
+                        })()}
                       </div>
                     </div>
                   )}
@@ -512,8 +521,19 @@ export default function Reports() {
                             </span>
                           </td>
                           <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200 text-sm">
-                            {product.name}
-                            {product.sku && <span className="text-xs text-slate-400 ml-2">({product.sku})</span>}
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                {product.image_url ? (
+                                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <ImageIcon className="w-4 h-4 text-slate-400" />
+                                )}
+                              </div>
+                              <div>
+                                <span>{product.name}</span>
+                                {product.sku && <span className="text-xs text-slate-400 ml-2">({product.sku})</span>}
+                              </div>
+                            </div>
                           </td>
                           <td className="py-2 px-3 text-right text-slate-600 dark:text-slate-400 text-sm">{product.total_sold}</td>
                           <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400 text-sm">R {product.total_revenue.toFixed(2)}</td>
@@ -542,8 +562,13 @@ export default function Reports() {
               {transactions.length === 0 ? (
                 <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                   <ShoppingBag className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p className="font-medium text-sm">No transactions found</p>
-                  <p className="text-xs">No sales were recorded on this day</p>
+                  <p className="font-medium text-sm">No transactions on this date</p>
+                  <p className="text-xs mt-1">No sales were recorded on the selected date above.</p>
+                  {canViewAdvanced && (
+                    <p className="text-xs mt-2 text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
+                      Totals and charts above are for the selected period (Last {days} days), not just this date.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -565,7 +590,16 @@ export default function Reports() {
                             <span className="text-xs font-mono text-slate-600 dark:text-slate-400">#{t.id}</span>
                           </td>
                           <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200 text-sm">
-                            Product #{t.product_id}
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                {(t.product_image_url || t.productImageUrl) ? (
+                                  <img src={t.product_image_url || t.productImageUrl} alt={t.product_name || t.productName || ''} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <ImageIcon className="w-4 h-4 text-slate-400" />
+                                )}
+                              </div>
+                              <span>{t.product_name || t.productName || `Product #${t.product_id}`}</span>
+                            </div>
                           </td>
                           <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400 text-sm">{t.quantity_sold}</td>
                           <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400 text-sm">
