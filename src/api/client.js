@@ -127,6 +127,15 @@ export const NotificationsAPI = {
   sendReceipt: (data) => api.post("/receipts/send", data).then((r) => r.data),
 };
 
+export const PushAPI = {
+  vapidPublicKey: () => api.get("/push/vapid-public-key").then((r) => r.data),
+  subscribe: (subscription) =>
+    api.post("/push/subscribe", subscription).then((r) => r.data),
+  unsubscribe: (endpoint) =>
+    api.post("/push/unsubscribe", { endpoint }).then((r) => r.data),
+  test: () => api.post("/push/test").then((r) => r.data),
+};
+
 // Customers API
 export const CustomersAPI = {
   list: (params = {}) => 

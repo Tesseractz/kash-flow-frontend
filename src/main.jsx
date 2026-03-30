@@ -22,6 +22,13 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import ProtectedRoute from './components/ProtectedRoute'
 
+// Register service worker (required for Web Push on supported browsers)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
 const router = createBrowserRouter([
   {
     path: "/",

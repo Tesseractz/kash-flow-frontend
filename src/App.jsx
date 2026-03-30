@@ -295,6 +295,62 @@ function MobileHeader({ onMenuOpen }) {
   );
 }
 
+function MobileTabBar({ onMore }) {
+  const location = useLocation();
+  const { t } = useTranslation();
+  const { isAdmin } = useAuth();
+
+  const tabs = [
+    { to: "/sell", icon: ShoppingCart, label: t("nav.sell"), adminOnly: false },
+    { to: "/products", icon: Package, label: t("nav.products"), adminOnly: false },
+    { to: "/reports", icon: BarChart3, label: t("nav.reports"), adminOnly: true },
+    { to: "/profile", icon: User, label: t("nav.profile", "Profile"), adminOnly: false },
+  ].filter((tab) => !tab.adminOnly || isAdmin);
+
+  return (
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 safe-bottom">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-stretch justify-around px-2 py-2">
+          {tabs.map(({ to, icon: Icon, label }) => {
+            const isActive = location.pathname === to;
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={clsx(
+                  "flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 min-w-0 flex-1",
+                  "transition-colors touch-target",
+                  isActive
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-slate-600 dark:text-slate-300"
+                )}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Icon size={20} />
+                <span className="text-[11px] font-medium leading-none truncate max-w-full">
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={onMore}
+            className="flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 min-w-0 flex-1 transition-colors text-slate-600 dark:text-slate-300 touch-target"
+            aria-label={t("nav.more", "More")}
+          >
+            <Menu size={20} />
+            <span className="text-[11px] font-medium leading-none truncate max-w-full">
+              {t("nav.more", "More")}
+            </span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 export default function App() {
   const { isAuthenticated, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -343,13 +399,15 @@ export default function App() {
         <MobileHeader onMenuOpen={() => setMobileMenuOpen(true)} />
         <DesktopHeader />
 
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 mobile-main-offset overflow-x-hidden min-w-0">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 mobile-main-offset mobile-bottom-offset overflow-x-hidden min-w-0">
           <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>
         </main>
       </div>
       
+      <MobileTabBar onMore={() => setMobileMenuOpen(true)} />
+
       {/* Cookie Consent Banner */}
       <CookieConsent />
     </div>

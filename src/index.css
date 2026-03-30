@@ -52,9 +52,16 @@ body {
   .mobile-main-offset {
     margin-top: calc(4rem + var(--sat));
   }
+  /* Bottom offset on mobile (tab bar + safe area) */
+  .mobile-bottom-offset {
+    padding-bottom: calc(4.25rem + var(--sab));
+  }
   @media (min-width: 1024px) {
     .mobile-main-offset {
       margin-top: 0;
+    }
+    .mobile-bottom-offset {
+      padding-bottom: 0;
     }
   }
 }

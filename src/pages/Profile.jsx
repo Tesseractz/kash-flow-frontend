@@ -7,8 +7,9 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/Card";
-import { PlanAPI, BillingAPI, NotificationsAPI } from "../api/client";
+import { PlanAPI, BillingAPI, NotificationsAPI, PushAPI } from "../api/client";
 import toast from "react-hot-toast";
+import { ensurePushSubscription, subscriptionToPayload } from "../lib/push";
 import {
   User,
   Mail,
@@ -54,6 +55,9 @@ export default function Profile() {
   const [notificationEmail, setNotificationEmail] = useState("");
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [dailySummaryEnabled, setDailySummaryEnabled] = useState(false);
+  const [devicePushSupported, setDevicePushSupported] = useState(false);
+  const [devicePushEnabled, setDevicePushEnabled] = useState(false);
+  const [devicePushBusy, setDevicePushBusy] = useState(false);
 
   // Get subscription info
   const planQuery = useQuery({
@@ -93,6 +97,31 @@ export default function Profile() {
       !!notificationSettingsQuery.data.daily_summary_enabled
     );
   }, [notificationSettingsQuery.data]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const supported =
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        "serviceWorker" in navigator &&
+        "PushManager" in window;
+      if (!mounted) return;
+      setDevicePushSupported(!!supported);
+      if (!supported) return;
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (!mounted) return;
+        setDevicePushEnabled(!!sub);
+      } catch (_) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const formatDate = (isoString) => {
     if (!isoString) return null;
@@ -577,6 +606,93 @@ export default function Profile() {
               BREVO_SENDER_EMAIL on the backend to enable emails.
             </p>
           )}
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-sm font-medium text-slate-800 dark:text-white mb-2">
+              Device notifications (real-time)
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              Requires a supported browser and HTTPS (works on localhost for dev).
+            </p>
+
+            {!devicePushSupported ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Push notifications are not supported in this browser.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      setDevicePushBusy(true);
+                      const sub = await ensurePushSubscription();
+                      await PushAPI.subscribe(subscriptionToPayload(sub));
+                      setDevicePushEnabled(true);
+                    } catch (e) {
+                      toast.error(e?.message || "Failed to enable device notifications");
+                    } finally {
+                      setDevicePushBusy(false);
+                    }
+                  }}
+                  disabled={devicePushBusy || devicePushEnabled}
+                  className="w-full sm:w-auto"
+                >
+                  {devicePushEnabled
+                    ? "Enabled on this device"
+                    : devicePushBusy
+                      ? "Enabling..."
+                      : "Enable on this device"}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      setDevicePushBusy(true);
+                      const reg = await navigator.serviceWorker.ready;
+                      const sub = await reg.pushManager.getSubscription();
+                      if (sub) {
+                        await PushAPI.unsubscribe(sub.endpoint);
+                        await sub.unsubscribe();
+                      }
+                      setDevicePushEnabled(false);
+                    } catch (e) {
+                      toast.error(e?.message || "Failed to disable device notifications");
+                    } finally {
+                      setDevicePushBusy(false);
+                    }
+                  }}
+                  disabled={devicePushBusy || !devicePushEnabled}
+                  className="w-full sm:w-auto"
+                >
+                  Disable on this device
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      setDevicePushBusy(true);
+                      const r = await PushAPI.test();
+                      if (r?.sent > 0) toast.success("Test notification sent");
+                      else toast.error(r?.message || "No device subscription found");
+                    } catch (e) {
+                      toast.error(e?.message || "Failed to send test notification");
+                    } finally {
+                      setDevicePushBusy(false);
+                    }
+                  }}
+                  disabled={devicePushBusy || !devicePushEnabled}
+                  className="w-full sm:w-auto"
+                >
+                  Send test notification
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
