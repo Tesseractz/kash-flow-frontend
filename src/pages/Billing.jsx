@@ -5,62 +5,26 @@ import { Button } from '../components/ui/Button'
 import { Card, CardContent } from '../components/ui/Card'
 import { BillingAPI, PlanAPI } from '../api/client'
 import toast from 'react-hot-toast'
-import { Check, X, Zap, Building2, Package, Users, FileText, Bell, Shield, CreditCard, Calendar, AlertTriangle, Gift } from 'lucide-react'
+import { Check, X, Zap, Package, Users, FileText, Bell, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
 
-const plans = [
-  {
-    name: 'Free',
-    price: 'R0',
-    period: '/forever',
-    description: 'Get started for free',
-    icon: Gift,
-    iconBg: 'bg-slate-100 dark:bg-slate-700',
-    iconColor: 'text-slate-600 dark:text-slate-400',
-    features: [
-      { text: 'Up to 10 products', included: true },
-      { text: '1 team member', included: true },
-      { text: 'Basic POS & sales', included: true },
-      { text: 'Advanced analytics', included: false },
-      { text: 'Low stock alerts', included: false },
-      { text: 'CSV export', included: false },
-    ],
-    planId: 'free',
-    isFree: true,
-  },
-  {
-    name: 'Pro',
-    price: 'R190',
-    period: '/month',
-    description: 'For growing businesses',
-    icon: Zap,
-    iconBg: 'bg-blue-100 dark:bg-blue-900/50',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    popular: true,
-    features: [
-      { text: 'Unlimited products', included: true },
-      { text: 'Up to 3 team members', included: true },
-      { text: 'Advanced analytics', included: true },
-      { text: 'Low stock alerts', included: true },
-      { text: 'CSV export', included: true },
-    ],
-    planId: 'pro',
-  },
-  {
-    name: 'Business',
-    price: 'R220',
-    period: '/month',
-    description: 'For larger operations',
-    icon: Building2,
-    iconBg: 'bg-purple-100 dark:bg-purple-900/50',
-    iconColor: 'text-purple-600 dark:text-purple-400',
-    features: [
-      { text: 'Everything in Pro', included: true },
-      { text: 'Unlimited team members', included: true },
-      { text: 'Audit logs', included: true },
-    ],
-    planId: 'business',
-  },
-]
+const plan = {
+  name: 'Pro',
+  price: 'R190',
+  period: '/month',
+  description: 'Everything unlocked for your store',
+  icon: Zap,
+  iconBg: 'bg-blue-100 dark:bg-blue-900/50',
+  iconColor: 'text-blue-600 dark:text-blue-400',
+  features: [
+    { text: 'Unlimited products', included: true },
+    { text: 'Unlimited team members', included: true },
+    { text: 'Advanced analytics', included: true },
+    { text: 'Low stock alerts', included: true },
+    { text: 'CSV export', included: true },
+    { text: 'Audit logs', included: true },
+  ],
+  planId: 'pro',
+}
 
 function formatDate(isoString) {
   if (!isoString) return null
@@ -191,10 +155,10 @@ export default function Billing() {
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center max-w-2xl mx-auto">
         <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
-          Choose Your Plan
+          Pro Plan
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1 sm:mt-2">
-          Start with a 30-day free trial. Credit card required, but you won't be charged until the trial ends.
+          One plan. Full access. Start with a 30-day free trial.
         </p>
       </div>
 
@@ -322,8 +286,7 @@ export default function Billing() {
                   Your subscription is not active
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  Subscribe to Pro or Business to unlock all features. Start
-                  with a 30-day free trial!
+                  Start your 30-day free trial to unlock all features.
                 </p>
               </div>
             </div>
@@ -331,49 +294,32 @@ export default function Billing() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 max-w-5xl mx-auto">
-        {plans.map((plan) => {
-          const isCurrent = (plan.planId === currentPlan) || 
-            (plan.planId === 'free' && (currentPlan === 'free' || currentPlan === 'expired'));
-          const isFreePlan = plan.isFree;
-          return (
-            <Card
-              key={plan.name}
-              className={`relative ${
-                plan.popular
-                  ? "border-blue-600 dark:border-blue-500 border-2 shadow-lg shadow-blue-600/10"
-                  : ""
-              } ${isCurrent ? "ring-2 ring-emerald-500" : ""}`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-              {isCurrent && (
-                <div className="absolute -top-3 right-4">
-                  <span className="bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                    Current
-                  </span>
-                </div>
-              )}
-              <CardContent className="p-4 sm:p-6">
+      <div className="mt-8 max-w-2xl mx-auto">
+        <Card className="relative border-blue-600 dark:border-blue-500 border-2 shadow-lg shadow-blue-600/10">
+          {(currentPlan === 'pro') && (
+            <div className="absolute -top-3 right-4">
+              <span className="bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                Current
+              </span>
+            </div>
+          )}
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
                 <div
                   className={`w-12 h-12 ${plan.iconBg} rounded-xl flex items-center justify-center mb-4`}
                 >
                   <plan.icon className={`w-6 h-6 ${plan.iconColor}`} />
                 </div>
-
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white">
                   {plan.name}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   {plan.description}
                 </p>
-
-                <div className="mt-4 mb-2">
+              </div>
+              <div className="text-right">
+                <div className="mt-1">
                   <span className="text-4xl font-bold text-slate-800 dark:text-white">
                     {plan.price}
                   </span>
@@ -381,69 +327,47 @@ export default function Billing() {
                     {plan.period}
                   </span>
                 </div>
-                {isFreePlan ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                    No credit card required
-                  </p>
-                ) : (
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4">
-                    30-day free trial • Card required
-                  </p>
-                )}
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
+                  30-day free trial • Card required
+                </p>
+              </div>
+            </div>
 
-                {isCurrent ? (
-                  <Button variant="secondary" className="w-full" disabled>
-                    Current Plan
-                  </Button>
-                ) : isFreePlan ? (
-                  <Button variant="outline" className="w-full" disabled>
-                    —
-                  </Button>
-                ) : (
-                  <Button
-                    variant={plan.popular ? "primary" : "outline"}
-                    className="w-full"
-                    onClick={() => upgrade(plan.planId)}
-                    disabled={loading}
+            <div className="mt-5">
+              {(currentPlan === 'pro' && isActive) ? (
+                <Button variant="secondary" className="w-full" disabled>
+                  Active
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => upgrade(plan.planId)}
+                  disabled={loading}
+                >
+                  {loading ? "Processing..." : (hasStripeSubscription ? "Resume Pro" : "Start Free Trial")}
+                </Button>
+              )}
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                What's included:
+              </p>
+              <ul className="space-y-2.5">
+                {plan.features.map((feature, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400"
                   >
-                    {loading
-                      ? "Processing..."
-                      : hasStripeSubscription
-                      ? "Switch Plan"
-                      : "Start Free Trial"}
-                  </Button>
-                )}
-
-                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                    What's included:
-                  </p>
-                  <ul className="space-y-2.5">
-                    {plan.features.map((feature, idx) => (
-                      <li
-                        key={idx}
-                        className={`flex items-start gap-2 text-sm ${
-                          feature.included 
-                            ? "text-slate-600 dark:text-slate-400" 
-                            : "text-slate-400 dark:text-slate-500"
-                        }`}
-                      >
-                        {feature.included ? (
-                          <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                        ) : (
-                          <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mt-0.5 flex-shrink-0" />
-                        )}
-                        <span className={!feature.included ? "line-through" : ""}>
-                          {feature.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                    <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span>{feature.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="mt-8">

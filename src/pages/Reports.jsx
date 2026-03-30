@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ReportsAPI, AnalyticsAPI, PlanAPI } from '../api/client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import {
@@ -47,7 +48,8 @@ export default function Reports() {
 
   const canExport = planQuery.data?.limits?.csv_export
   const canViewAdvanced = planQuery.data?.limits?.advanced_reports
-  const isFreePlan = !canViewAdvanced
+  const planKnown = planQuery.isSuccess && !!planQuery.data
+  const isFreePlan = planKnown ? !canViewAdvanced : false
 
   // Daily report query (for transactions)
   const reportQuery = useQuery({
@@ -120,13 +122,65 @@ export default function Reports() {
   const analyticsData = analyticsQuery.data || cachedData.analytics?.[days]
   const usingCachedReport = !reportQuery.data && !!cachedData.reports?.[date]
   const usingCachedAnalytics = !analyticsQuery.data && !!cachedData.analytics?.[days]
+  // If plan hasn't loaded yet, keep showing cached analytics (prevents "charts disappeared" flash)
+  const allowAdvancedUI = !!canViewAdvanced || (!planKnown && usingCachedAnalytics)
   
   const totals = reportData?.totals || {}
   const transactions = reportData?.transactions || []
 
+  const basicCharts = useMemo(() => {
+    // Build simple "app-like" charts for free plan from daily transactions.
+    // This ensures the Reports screen still has charts even without advanced analytics.
+    const hourly = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      sales_count: 0,
+      revenue: 0,
+    }))
+
+    const byProduct = new Map()
+
+    for (const t of transactions) {
+      const ts = t.timestamp ? new Date(t.timestamp) : null
+      const hour = ts && !Number.isNaN(ts.getTime()) ? ts.getHours() : null
+      if (hour !== null) {
+        hourly[hour].sales_count += Number(t.quantity_sold || 0) > 0 ? 1 : 1
+        hourly[hour].revenue += Number(t.total_price || 0) || 0
+      }
+
+      const name = t.product_name || t.productName || `Product #${t.product_id}`
+      const key = String(t.product_id ?? name)
+      const prev = byProduct.get(key) || { key, name, revenue: 0, qty: 0, image_url: t.product_image_url || t.productImageUrl }
+      prev.revenue += Number(t.total_price || 0) || 0
+      prev.qty += Number(t.quantity_sold || 0) || 0
+      if (!prev.image_url) prev.image_url = t.product_image_url || t.productImageUrl
+      byProduct.set(key, prev)
+    }
+
+    const topProducts = Array.from(byProduct.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+
+    const maxHourlySales = Math.max(...hourly.map((h) => h.sales_count), 1)
+    const maxHourlyRevenue = Math.max(...hourly.map((h) => h.revenue), 1)
+
+    return { hourly, topProducts, maxHourlySales, maxHourlyRevenue }
+  }, [transactions])
+
+  const hourColor = (revenue, maxRevenue) => {
+    if (!maxRevenue || maxRevenue <= 0) return "bg-slate-300 dark:bg-slate-600"
+    const r = Math.max(0, revenue) / maxRevenue
+    // 6-step ramp: slate -> blue -> indigo -> violet -> fuchsia -> amber
+    if (r < 0.05) return "bg-slate-300 dark:bg-slate-600"
+    if (r < 0.2) return "bg-sky-500 dark:bg-sky-400"
+    if (r < 0.4) return "bg-blue-600 dark:bg-blue-400"
+    if (r < 0.6) return "bg-indigo-600 dark:bg-indigo-400"
+    if (r < 0.8) return "bg-violet-600 dark:bg-violet-400"
+    return "bg-amber-500 dark:bg-amber-400"
+  }
+
   // For free users, show basic stats from daily report
   // For paid users, show analytics data
-  const summaryData = canViewAdvanced && analyticsData ? {
+  const summaryData = allowAdvancedUI && analyticsData ? {
     total_revenue: analyticsData.total_revenue || 0,
     total_profit: analyticsData.total_profit || 0,
     total_sales: analyticsData.total_sales || 0,
@@ -142,8 +196,10 @@ export default function Reports() {
     profit_margin: totals.total_revenue > 0 ? ((totals.total_profit || 0) / totals.total_revenue * 100) : 0,
   }
 
-  const isLoading = (reportQuery.isLoading && !usingCachedReport) || 
-                    (canViewAdvanced && analyticsQuery.isLoading && !usingCachedAnalytics)
+  const isLoading =
+    (reportQuery.isLoading && !usingCachedReport) ||
+    (allowAdvancedUI && analyticsQuery.isLoading && !usingCachedAnalytics) ||
+    (isOnline && planQuery.isLoading && !planKnown)
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -154,12 +210,14 @@ export default function Reports() {
             Reports & Analytics
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            {isFreePlan ? 'Daily sales performance' : 'Advanced insights for your business'}
+            {planKnown && !canViewAdvanced
+              ? 'Daily sales performance'
+              : 'Advanced insights for your business'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Period selector (for analytics - paid only) */}
-          {canViewAdvanced && (
+          {allowAdvancedUI && (
             <select
               className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
               value={days}
@@ -204,7 +262,7 @@ export default function Reports() {
             size="sm"
             onClick={() => {
               reportQuery.refetch()
-              if (canViewAdvanced) analyticsQuery.refetch()
+              if (allowAdvancedUI) analyticsQuery.refetch()
             }}
             disabled={isLoading || !isOnline}
           >
@@ -224,7 +282,7 @@ export default function Reports() {
       )}
 
       {/* Upgrade banner for free users */}
-      {isFreePlan && (
+      {planKnown && !canViewAdvanced && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
           <CardContent className="py-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -239,13 +297,11 @@ export default function Reports() {
                   </p>
                 </div>
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => window.location.href = '/billing'}
-              >
-                Upgrade
-              </Button>
+              <Link to="/billing">
+                <Button variant="primary" size="sm">
+                  Upgrade
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -267,12 +323,12 @@ export default function Reports() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {canViewAdvanced ? 'Total Revenue' : "Today's Revenue"}
+                      {allowAdvancedUI ? 'Total Revenue' : "Today's Revenue"}
                     </p>
                     <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mt-1">
                       R {summaryData.total_revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
-                    {canViewAdvanced && (
+                    {allowAdvancedUI && (
                       <div className="flex items-center gap-1 mt-2 text-sm">
                         {summaryData.revenue_trend >= 0 ? (
                           <span className="flex items-center text-emerald-600 dark:text-emerald-400">
@@ -301,7 +357,7 @@ export default function Reports() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {canViewAdvanced ? 'Total Profit' : "Today's Profit"}
+                      {allowAdvancedUI ? 'Total Profit' : "Today's Profit"}
                     </p>
                     <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mt-1">
                       R {summaryData.total_profit.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -323,7 +379,7 @@ export default function Reports() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {canViewAdvanced ? 'Total Sales' : "Today's Sales"}
+                      {allowAdvancedUI ? 'Total Sales' : "Today's Sales"}
                     </p>
                     <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mt-1">
                       {summaryData.total_sales}
@@ -363,8 +419,8 @@ export default function Reports() {
             </Card>
           </div>
 
-          {/* Charts Section (Pro/Business only) */}
-          {canViewAdvanced && analyticsData && (
+          {/* Charts Section */}
+          {allowAdvancedUI && analyticsData ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Revenue Trend */}
               <Card>
@@ -481,10 +537,113 @@ export default function Reports() {
                 </CardContent>
               </Card>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Basic hourly chart for free plan */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Clock size={18} />
+                    Today by Hour
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Sales count and revenue for the selected date
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {transactions.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                      <Clock className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No data available</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="h-36 flex items-stretch gap-1">
+                        {basicCharts.hourly.map((h) => {
+                          const height = (h.sales_count / basicCharts.maxHourlySales) * 100
+                          const barColor = hourColor(h.revenue, basicCharts.maxHourlyRevenue)
+                          return (
+                            <div key={h.hour} className="flex-1 h-full min-h-0 flex flex-col justify-end group relative">
+                              <div
+                                className={`${barColor} rounded-t transition-colors flex-shrink-0`}
+                                style={{ height: `${Math.max(height, 2)}%` }}
+                              />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                {h.hour}:00 — {h.sales_count} sale{h.sales_count === 1 ? "" : "s"}, R {h.revenue.toFixed(2)}
+                              </div>
+                              {h.hour % 6 === 0 && (
+                                <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-slate-400">
+                                  {h.hour}:00
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                        <span>Tip: upgrade for multi-day trends</span>
+                        <span>Total: {transactions.length} sale{transactions.length === 1 ? "" : "s"}</span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Basic top products for free plan */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Package size={18} />
+                    Top Products (Today)
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Based on revenue for the selected date
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {basicCharts.topProducts.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                      <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No data available</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {basicCharts.topProducts.map((p, idx) => (
+                        <div
+                          key={p.key}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <ImageIcon className="w-4 h-4 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                              {idx + 1}. {p.name}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {p.qty} item{p.qty === 1 ? "" : "s"}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                              R {p.revenue.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* Top Products (Pro/Business only) */}
-          {canViewAdvanced && analyticsData && (analyticsData.top_products || []).length > 0 && (
+          {allowAdvancedUI && analyticsData && (analyticsData.top_products || []).length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -564,7 +723,7 @@ export default function Reports() {
                   <ShoppingBag className="w-10 h-10 mx-auto mb-2 opacity-50" />
                   <p className="font-medium text-sm">No transactions on this date</p>
                   <p className="text-xs mt-1">No sales were recorded on the selected date above.</p>
-                  {canViewAdvanced && (
+                  {allowAdvancedUI && (
                     <p className="text-xs mt-2 text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
                       Totals and charts above are for the selected period (Last {days} days), not just this date.
                     </p>

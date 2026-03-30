@@ -555,7 +555,9 @@ export default function UsersPage() {
 
 function UserActionsMenu({ user, onRoleChange, onRemove, onViewCredentials }) {
   const [open, setOpen] = useState(false);
+  const [align, setAlign] = useState("right"); // 'right' | 'left'
   const menuRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -567,6 +569,22 @@ function UserActionsMenu({ user, onRoleChange, onRemove, onViewCredentials }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const el = dropdownRef.current;
+    if (!el) return;
+
+    // Next tick after render so we can measure.
+    const id = window.requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const padding = 8;
+      if (rect.left < padding) setAlign("left");
+      else if (rect.right > window.innerWidth - padding) setAlign("right");
+    });
+
+    return () => window.cancelAnimationFrame(id);
+  }, [open]);
+
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -576,7 +594,12 @@ function UserActionsMenu({ user, onRoleChange, onRemove, onViewCredentials }) {
         <MoreVertical size={18} className="text-slate-600 dark:text-slate-400" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50">
+        <div
+          ref={dropdownRef}
+          className={`absolute top-full mt-2 w-48 max-w-[calc(100vw-1rem)] bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 ${
+            align === "left" ? "left-0" : "right-0"
+          }`}
+        >
           <button
             onClick={() => {
               onViewCredentials(user);

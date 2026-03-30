@@ -526,7 +526,7 @@ export default function Sell() {
       {cart.length > 0 && !showCart && (
         <button
           onClick={() => setShowCart(true)}
-          className={`lg:hidden fixed bottom-5 right-5 z-40 w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95 ${
+          className={`lg:hidden fixed mobile-fab-offset right-5 z-40 w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95 ${
             mode === "return" 
               ? "bg-amber-600 hover:bg-amber-700" 
               : "bg-blue-600 hover:bg-blue-700"

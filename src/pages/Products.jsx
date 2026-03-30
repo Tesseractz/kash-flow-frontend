@@ -58,6 +58,7 @@ export default function Products() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [cachedProducts, setCachedProductsState] = useState(() =>
     getCachedProducts()
@@ -271,33 +272,8 @@ export default function Products() {
     });
   };
 
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
-            Products
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Manage your product inventory
-          </p>
-        </div>
-        {isAdmin && (
-          <Button
-            size="sm"
-            onClick={() => {
-              if (!isOnline) {
-                toast("Offline: product will be saved locally.");
-              }
-              setShowAddForm(!showAddForm);
-            }}
-          >
-            <Plus size={18} />
-            Add Product
-          </Button>
-        )}
-      </div>
-
+  const infoCards = (
+    <>
       <Card className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -436,6 +412,62 @@ export default function Products() {
           </CardContent>
         </Card>
       )}
+    </>
+  );
+
+  return (
+    <div className="space-y-3 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
+            Products
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Manage your product inventory
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
+            size="sm"
+            onClick={() => {
+              if (!isOnline) {
+                toast("Offline: product will be saved locally.");
+              }
+              setShowAddForm(!showAddForm);
+            }}
+          >
+            <Plus size={18} />
+            Add Product
+          </Button>
+        )}
+      </div>
+
+      {/* Mobile: collapse info/alerts so inventory is visible immediately */}
+      <Card className="sm:hidden border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <CardContent className="py-3">
+          <details>
+            <summary className="cursor-pointer select-none list-none">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
+                    Quick actions & alerts
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    Sell shortcut, offline status, stock alerts
+                  </p>
+                </div>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Tap
+                </span>
+              </div>
+            </summary>
+            <div className="mt-3 space-y-3">{infoCards}</div>
+          </details>
+        </CardContent>
+      </Card>
+
+      {/* Desktop/tablet: show info/alerts inline */}
+      <div className="hidden sm:block space-y-4">{infoCards}</div>
 
       {showAddForm && (
         <Card>
@@ -557,7 +589,62 @@ export default function Products() {
 
       <Card>
         <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          {/* Mobile: compact header with optional filters */}
+          <div className="sm:hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <CardTitle className="text-base">Inventory</CardTitle>
+                <CardDescription className="text-xs">
+                  {total} product{total === 1 ? "" : "s"} in your store
+                </CardDescription>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setMobileFiltersOpen((v) => !v)}
+                className="shrink-0"
+              >
+                <Search size={16} />
+                {mobileFiltersOpen ? "Hide" : "Search"}
+              </Button>
+            </div>
+
+            {mobileFiltersOpen && (
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <div className="relative">
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
+                  <input
+                    placeholder="Search products..."
+                    value={search}
+                    onChange={(e) => {
+                      setPage(1);
+                      setSearch(e.target.value);
+                    }}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  />
+                </div>
+                <select
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-800 dark:text-white px-3 py-2.5 focus:border-blue-500 outline-none"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPage(1);
+                    setPageSize(Number(e.target.value));
+                  }}
+                >
+                  <option value={5}>5 per page</option>
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Tablet/Desktop: existing layout */}
+          <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
               <CardTitle>Inventory</CardTitle>
               <CardDescription>{total} products in your store</CardDescription>
