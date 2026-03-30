@@ -29,6 +29,7 @@ import {
   Smartphone,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import DevicePushSetup from '../components/DevicePushSetup'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
@@ -175,7 +176,7 @@ export default function PrivacySettings() {
   const pendingExport = exportRequests.find(r => r.status === 'pending' || r.status === 'processing')
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full min-w-0">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-24 lg:pb-0">
       {/* Header */}
       <div className="min-w-0">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3 flex-wrap">
@@ -235,6 +236,8 @@ export default function PrivacySettings() {
               <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
             </label>
           </div>
+
+          <DevicePushSetup enabled={settings?.push_notifications_enabled === true} />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">

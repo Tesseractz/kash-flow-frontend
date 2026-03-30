@@ -13,8 +13,10 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
-  /* Approx mobile tab bar height (without safe-area inset) */
-  --mobile-tabbar-h: 4.25rem;
+  /* Approx mobile tab bar height (without safe-area inset). Keep slightly generous to prevent overlap. */
+  --mobile-tabbar-h: 5rem;
+  /* Extra breathing room above the mobile tab bar */
+  --mobile-tabbar-gap: 1rem;
 }
 
 html, body, #root {
@@ -56,7 +58,7 @@ body {
   }
   /* Bottom offset on mobile (tab bar + safe area) */
   .mobile-bottom-offset {
-    padding-bottom: calc(4.25rem + var(--sab));
+    padding-bottom: calc(var(--mobile-tabbar-h) + var(--mobile-tabbar-gap) + var(--sab));
   }
   /* For fixed-position FABs on mobile: lift above tab bar */
   .mobile-fab-offset {

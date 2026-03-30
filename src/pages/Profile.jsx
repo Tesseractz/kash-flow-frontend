@@ -500,199 +500,21 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Notifications Card */}
+      {/* Privacy & Notifications (shortcut) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            Notifications
+            <Shield className="w-5 h-5" />
+            Privacy & Notifications
           </CardTitle>
           <CardDescription>
-            Low stock alerts and daily finance summaries
+            Communication preferences, sessions, exports, and account security
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              Notification Email
-            </label>
-            <input
-              type="email"
-              placeholder="you@example.com"
-              value={notificationEmail}
-              onChange={(e) => setNotificationEmail(e.target.value)}
-              className="mt-2 w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                Low Stock Threshold
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={lowStockThreshold}
-                onChange={(e) => setLowStockThreshold(e.target.value)}
-                className="mt-2 w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
-              />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Notify when stock is at or below this number
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 sm:flex-1">
-              <input
-                id="daily-summary-toggle"
-                type="checkbox"
-                checked={dailySummaryEnabled}
-                onChange={(e) => setDailySummaryEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
-              />
-              <label
-                htmlFor="daily-summary-toggle"
-                className="text-sm text-slate-700 dark:text-slate-200 cursor-pointer select-none min-w-0"
-              >
-                Enable daily summary emails
-              </label>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={handleSaveNotifications}
-              disabled={saveNotificationsMutation.isLoading}
-              className="w-full sm:w-auto"
-            >
-              {saveNotificationsMutation.isLoading ? "Saving..." : "Save Settings"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                sendDailySummaryMutation.mutate({
-                  date_utc: new Date().toISOString().slice(0, 10),
-                  email: notificationEmail,
-                  send_email: true,
-                })
-              }
-              disabled={!emailReady || sendDailySummaryMutation.isLoading}
-              className="w-full sm:w-auto"
-            >
-              Email daily summary now
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                sendLowStockMutation.mutate({
-                  threshold: Number(lowStockThreshold) || 10,
-                  email: notificationEmail,
-                  send_email: true,
-                })
-              }
-              disabled={!emailReady || sendLowStockMutation.isLoading}
-              className="w-full sm:w-auto"
-            >
-              Email low stock now
-            </Button>
-          </div>
-
-          {!emailConfigured && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              Email delivery not configured. Set BREVO_API_KEY and
-              BREVO_SENDER_EMAIL on the backend to enable emails.
-            </p>
-          )}
-
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-            <p className="text-sm font-medium text-slate-800 dark:text-white mb-2">
-              Device notifications (real-time)
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-              Requires a supported browser and HTTPS (works on localhost for dev).
-            </p>
-
-            {!devicePushSupported ? (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Push notifications are not supported in this browser.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      setDevicePushBusy(true);
-                      const sub = await ensurePushSubscription();
-                      await PushAPI.subscribe(subscriptionToPayload(sub));
-                      setDevicePushEnabled(true);
-                    } catch (e) {
-                      toast.error(e?.message || "Failed to enable device notifications");
-                    } finally {
-                      setDevicePushBusy(false);
-                    }
-                  }}
-                  disabled={devicePushBusy || devicePushEnabled}
-                  className="w-full sm:w-auto"
-                >
-                  {devicePushEnabled
-                    ? "Enabled on this device"
-                    : devicePushBusy
-                      ? "Enabling..."
-                      : "Enable on this device"}
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      setDevicePushBusy(true);
-                      const reg = await navigator.serviceWorker.ready;
-                      const sub = await reg.pushManager.getSubscription();
-                      if (sub) {
-                        await PushAPI.unsubscribe(sub.endpoint);
-                        await sub.unsubscribe();
-                      }
-                      setDevicePushEnabled(false);
-                    } catch (e) {
-                      toast.error(e?.message || "Failed to disable device notifications");
-                    } finally {
-                      setDevicePushBusy(false);
-                    }
-                  }}
-                  disabled={devicePushBusy || !devicePushEnabled}
-                  className="w-full sm:w-auto"
-                >
-                  Disable on this device
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      setDevicePushBusy(true);
-                      const r = await PushAPI.test();
-                      if (r?.sent > 0) toast.success("Test notification sent");
-                      else toast.error(r?.message || "No device subscription found");
-                    } catch (e) {
-                      toast.error(e?.message || "Failed to send test notification");
-                    } finally {
-                      setDevicePushBusy(false);
-                    }
-                  }}
-                  disabled={devicePushBusy || !devicePushEnabled}
-                  className="w-full sm:w-auto"
-                >
-                  Send test notification
-                </Button>
-              </div>
-            )}
-          </div>
+        <CardContent>
+          <Button variant="secondary" onClick={() => navigate("/privacy-settings")}>
+            Manage privacy & security
+          </Button>
         </CardContent>
       </Card>
 

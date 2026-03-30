@@ -72,7 +72,8 @@ export default function Billing() {
     staleTime: 30000,
   })
 
-  const currentPlan = planQuery.data?.plan || 'expired'
+  const currentPlanRaw = planQuery.data?.plan || 'expired'
+  const currentPlan = currentPlanRaw === 'business' ? 'pro' : currentPlanRaw
   const status = planQuery.data?.status || 'expired'
   const isActive = planQuery.data?.is_active || false
   const limits = planQuery.data?.limits || {}
