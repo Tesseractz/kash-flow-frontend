@@ -82,7 +82,7 @@ export const ReportsAPI = {
 }
 
 export const BillingAPI = {
-  checkout: (plan) => api.post('/billing/checkout', { plan }).then(r => r.data),
+  checkout: ({ plan, email }) => api.post('/billing/checkout', { plan, email }).then(r => r.data),
   portal: () => api.post('/billing/portal').then(r => r.data),
   config: () => api.get('/billing/config').then(r => r.data),
 }

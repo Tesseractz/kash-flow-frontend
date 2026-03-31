@@ -6,6 +6,7 @@ import { Card, CardContent } from '../components/ui/Card'
 import { BillingAPI, PlanAPI } from '../api/client'
 import toast from 'react-hot-toast'
 import { Check, X, Zap, Package, Users, FileText, Bell, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const plan = {
   name: 'Pro',
@@ -56,6 +57,7 @@ export default function Billing() {
   const [loading, setLoading] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [searchParams] = useSearchParams()
+  const { user } = useAuth()
 
   useEffect(() => {
     if (searchParams.get("success") === "1") {
@@ -92,7 +94,8 @@ export default function Billing() {
     }
     try {
       setLoading(true)
-      const { url } = await BillingAPI.checkout(plan)
+      const email = user?.email || user?.user_metadata?.email || ''
+      const { url } = await BillingAPI.checkout({ plan, email })
       window.location.assign(url)
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to start checkout')
