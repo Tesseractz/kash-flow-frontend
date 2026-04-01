@@ -66,6 +66,14 @@ export default function Profile() {
     staleTime: 30000,
   });
 
+  const billingConfigQuery = useQuery({
+    queryKey: ["billing-config"],
+    queryFn: () => BillingAPI.config(),
+    staleTime: 30000,
+  });
+
+  const billingProvider = (billingConfigQuery.data?.provider || "stripe").toLowerCase();
+
   const notificationSettingsQuery = useQuery({
     queryKey: ["notification-settings"],
     queryFn: () => NotificationsAPI.getSettings(),
@@ -170,6 +178,10 @@ export default function Profile() {
   };
 
   const handleOpenBillingPortal = async () => {
+    if (billingProvider === "paystack") {
+      toast("Paystack subscriptions are managed via Paystack. Check your Paystack emails or dashboard.");
+      return;
+    }
     try {
       setPortalLoading(true);
       const { url } = await BillingAPI.portal();
@@ -182,6 +194,10 @@ export default function Profile() {
   };
 
   const handleCancelSubscription = async () => {
+    if (billingProvider === "paystack") {
+      toast("To cancel with Paystack, use your Paystack dashboard or the links in your Paystack subscription emails.");
+      return;
+    }
     try {
       setCancelLoading(true);
       // This will redirect to Stripe portal where they can cancel
@@ -377,7 +393,7 @@ export default function Profile() {
               {isActive ? "Change Plan" : "Upgrade"}
             </Button>
 
-            {hasStripeSubscription && (
+            {billingProvider === "stripe" && hasStripeSubscription && (
               <>
                 <Button
                   variant="outline"
@@ -400,6 +416,13 @@ export default function Profile() {
                   {cancelLoading ? "Loading..." : "Cancel Subscription"}
                 </Button>
               </>
+            )}
+
+            {billingProvider === "paystack" && isActive && (
+              <div className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
+                Subscriptions are managed by Paystack. Use your Paystack dashboard (or the links in Paystack emails) to
+                cancel or update your payment method.
+              </div>
             )}
           </div>
         </CardContent>

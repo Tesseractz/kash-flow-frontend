@@ -74,6 +74,14 @@ export default function Billing() {
     staleTime: 30000,
   })
 
+  const billingConfigQuery = useQuery({
+    queryKey: ['billing-config'],
+    queryFn: () => BillingAPI.config(),
+    staleTime: 30000,
+  })
+
+  const billingProvider = (billingConfigQuery.data?.provider || 'stripe').toLowerCase()
+
   const currentPlanRaw = planQuery.data?.plan || 'expired'
   const currentPlan = currentPlanRaw === 'business' ? 'pro' : currentPlanRaw
   const status = planQuery.data?.status || 'expired'
@@ -105,6 +113,10 @@ export default function Billing() {
   }
 
   const openPortal = async () => {
+    if (billingProvider === 'paystack') {
+      toast('Paystack subscriptions are managed via Paystack. Check your Paystack email receipts or your Paystack dashboard.')
+      return
+    }
     try {
       setPortalLoading(true)
       const { url } = await BillingAPI.portal()
@@ -189,7 +201,7 @@ export default function Billing() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {hasStripeSubscription && (
+                {billingProvider === 'stripe' && hasStripeSubscription && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -199,6 +211,12 @@ export default function Billing() {
                     <CreditCard className="w-4 h-4 mr-2" />
                     {portalLoading ? "Loading..." : "Manage Subscription"}
                   </Button>
+                )}
+                {billingProvider === 'paystack' && isActive && (
+                  <div className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
+                    Subscriptions are managed by Paystack. To cancel or update payment details, use your Paystack dashboard
+                    or the links in your Paystack subscription emails.
+                  </div>
                 )}
               </div>
             </div>
