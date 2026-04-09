@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent } from '../components/ui/Card'
 import { BillingAPI, PlanAPI } from '../api/client'
 import toast from 'react-hot-toast'
-import { Check, X, Zap, Package, Users, FileText, Bell, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
+import { Check, X, Zap, Package, Users, FileText, Bell, Calendar, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const plan = {
@@ -55,24 +55,11 @@ function daysUntil(isoString) {
 export default function Billing() {
   const qc = useQueryClient();
   const [loading, setLoading] = useState(false)
-  const [portalLoading, setPortalLoading] = useState(false)
-  const [searchParams] = useSearchParams()
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
-
-  useEffect(() => {
-    if (searchParams.get("success") === "1") {
-      toast.success("Subscription activated successfully!");
-      qc.invalidateQueries({ queryKey: ["plan"] });
-    } else if (searchParams.get("canceled") === "1") {
-      toast("Checkout was canceled");
-    }
-  }, [searchParams, qc]);
-
-  const planQuery = useQuery({
-    queryKey: ['plan'],
-    queryFn: () => PlanAPI.get(),
-    staleTime: 30000,
-  })
+  const syncAttempted = useRef(false)
 
   const billingConfigQuery = useQuery({
     queryKey: ['billing-config'],
@@ -80,7 +67,54 @@ export default function Billing() {
     staleTime: 30000,
   })
 
-  const billingProvider = (billingConfigQuery.data?.provider || 'stripe').toLowerCase()
+  const billingProvider = (billingConfigQuery.data?.provider || 'paystack').toLowerCase()
+
+  const planQuery = useQuery({
+    queryKey: ['plan'],
+    queryFn: () => PlanAPI.get(),
+    staleTime: 30000,
+  })
+
+  useEffect(() => {
+    if (billingConfigQuery.isLoading) return
+
+    const success = searchParams.get('success') === '1'
+    const canceled = searchParams.get('canceled') === '1'
+    const ref = searchParams.get('reference') || searchParams.get('trxref')
+
+    if (canceled) {
+      toast('Checkout was canceled')
+      setSearchParams({}, { replace: true })
+      return
+    }
+
+    if (!success) return
+
+    if (billingProvider === 'paystack' && ref && !syncAttempted.current) {
+      syncAttempted.current = true
+      setSyncing(true)
+      ;(async () => {
+        try {
+          await BillingAPI.paystackSync(ref)
+          toast.success('Payment verified! Your Pro plan is now active.')
+          qc.invalidateQueries({ queryKey: ['plan'] })
+        } catch (e) {
+          syncAttempted.current = false
+          toast.error(e?.response?.data?.detail || 'Could not verify payment. Try refreshing the page.')
+        } finally {
+          setSyncing(false)
+          setSearchParams({}, { replace: true })
+        }
+      })()
+      return
+    }
+
+    if (success) {
+      toast.success('Subscription activated successfully!')
+      qc.invalidateQueries({ queryKey: ['plan'] })
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, billingProvider, billingConfigQuery.isLoading, qc, setSearchParams])
 
   const currentPlanRaw = planQuery.data?.plan || 'expired'
   const currentPlan = currentPlanRaw === 'business' ? 'pro' : currentPlanRaw
@@ -90,20 +124,20 @@ export default function Billing() {
   const usage = planQuery.data?.usage || {}
   const trialEnd = planQuery.data?.trial_end
   const periodEnd = planQuery.data?.current_period_end
-  const hasStripeSubscription = planQuery.data?.has_stripe_subscription
+  const hasPaystackSubscription = planQuery.data?.has_paystack_subscription
 
   const trialDaysLeft = daysUntil(trialEnd)
   const isTrialing = status === 'trialing' && trialDaysLeft !== null && trialDaysLeft > 0
 
-  const upgrade = async (plan) => {
-    if (plan === currentPlan && isActive) {
+  const upgrade = async (planId) => {
+    if (planId === currentPlan && isActive) {
       toast('You are already on this plan')
       return
     }
     try {
       setLoading(true)
       const email = user?.email || user?.user_metadata?.email || ''
-      const { url } = await BillingAPI.checkout({ plan, email })
+      const { url } = await BillingAPI.checkout({ plan: planId, email })
       window.location.assign(url)
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to start checkout')
@@ -112,23 +146,36 @@ export default function Billing() {
     }
   }
 
-  const openPortal = async () => {
-    if (billingProvider === 'paystack') {
-      toast('Paystack subscriptions are managed via Paystack. Check your Paystack email receipts or your Paystack dashboard.')
+  const cancel = async () => {
+    if (!window.confirm('Are you sure you want to cancel your subscription? You will lose access to Pro features.')) {
       return
     }
     try {
-      setPortalLoading(true)
-      const { url } = await BillingAPI.portal()
-      window.location.assign(url)
+      setCancelLoading(true)
+      await BillingAPI.cancel()
+      toast.success('Subscription canceled')
+      qc.invalidateQueries({ queryKey: ['plan'] })
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Failed to open billing portal')
+      toast.error(e?.response?.data?.detail || 'Failed to cancel subscription')
     } finally {
-      setPortalLoading(false)
+      setCancelLoading(false)
     }
   }
 
+  const refreshPlan = () => {
+    qc.invalidateQueries({ queryKey: ['plan'] })
+    toast.success('Billing status refreshed')
+  }
+
   const getStatusBadge = () => {
+    if (syncing) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Verifying payment...
+        </span>
+      )
+    }
     if (isTrialing) {
       return (
         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
@@ -171,12 +218,25 @@ export default function Billing() {
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center max-w-2xl mx-auto">
         <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
-          Pro Plan
+          Billing
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1 sm:mt-2">
           One plan. Full access. Start with a 30-day free trial.
         </p>
       </div>
+
+      {syncing && (
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3 justify-center">
+              <Loader2 className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
+              <p className="text-blue-800 dark:text-blue-200 font-medium">
+                Verifying your payment with Paystack...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {planQuery.data && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
@@ -201,22 +261,35 @@ export default function Billing() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {billingProvider === 'stripe' && hasStripeSubscription && (
+                {!isActive && (
                   <Button
-                    variant="outline"
+                    variant="primary"
                     size="sm"
-                    onClick={openPortal}
-                    disabled={portalLoading}
+                    onClick={() => upgrade('pro')}
+                    disabled={loading}
                   >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    {portalLoading ? "Loading..." : "Manage Subscription"}
+                    {loading ? 'Processing...' : 'Upgrade to Pro'}
                   </Button>
                 )}
-                {billingProvider === 'paystack' && isActive && (
-                  <div className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
-                    Subscriptions are managed by Paystack. To cancel or update payment details, use your Paystack dashboard
-                    or the links in your Paystack subscription emails.
-                  </div>
+
+                {isActive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    onClick={cancel}
+                    disabled={cancelLoading}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    {cancelLoading ? 'Canceling...' : 'Cancel Subscription'}
+                  </Button>
+                )}
+
+                {isActive && (
+                  <Button variant="ghost" size="sm" onClick={refreshPlan}>
+                    <RefreshCw className="w-4 h-4 mr-1.5" />
+                    Refresh
+                  </Button>
                 )}
               </div>
             </div>
@@ -286,7 +359,7 @@ export default function Billing() {
               <Zap className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-emerald-800 dark:text-emerald-200 font-medium">
-                  🎉 Trial Active — Full Access Unlocked!
+                  Trial Active — Full Access Unlocked!
                 </p>
                 <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
                   You have access to <strong>all features</strong> during your trial period ({trialDaysLeft} days remaining).
@@ -298,7 +371,7 @@ export default function Billing() {
         </Card>
       )}
 
-      {!isActive && !isTrialing && (
+      {!isActive && !isTrialing && !syncing && (
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
@@ -314,6 +387,14 @@ export default function Billing() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {isActive && currentPlan === 'pro' && (
+        <div className="text-center">
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+            You have full access to all Pro features. There is no higher plan.
+          </p>
+        </div>
       )}
 
       <div className="mt-8 max-w-2xl mx-auto">
@@ -350,7 +431,7 @@ export default function Billing() {
                   </span>
                 </div>
                 <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
-                  30-day free trial • Card required
+                  30-day free trial
                 </p>
               </div>
             </div>
@@ -358,7 +439,7 @@ export default function Billing() {
             <div className="mt-5">
               {(currentPlan === 'pro' && isActive) ? (
                 <Button variant="secondary" className="w-full" disabled>
-                  Active
+                  {isTrialing ? 'Current plan: Pro (trial)' : 'Current plan: Pro'}
                 </Button>
               ) : (
                 <Button
@@ -367,14 +448,14 @@ export default function Billing() {
                   onClick={() => upgrade(plan.planId)}
                   disabled={loading}
                 >
-                  {loading ? "Processing..." : (hasStripeSubscription ? "Resume Pro" : "Start Free Trial")}
+                  {loading ? "Processing..." : "Start Free Trial"}
                 </Button>
               )}
             </div>
 
             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                What's included:
+                Included when you subscribe to Pro:
               </p>
               <ul className="space-y-2.5">
                 {plan.features.map((feature, idx) => (

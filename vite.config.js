@@ -18,8 +18,8 @@ export default defineConfig({
       '/sales': 'http://localhost:8000',
       '/returns': 'http://localhost:8000',
       '/reports': 'http://localhost:8000',
-      '/billing': 'http://localhost:8000',
-      '/stripe': 'http://localhost:8000',
+      '/billing/': 'http://localhost:8000',
+      '/paystack': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
       '/plan': 'http://localhost:8000',
       '/profile': 'http://localhost:8000',
@@ -35,6 +35,7 @@ export default defineConfig({
       '/barcode': 'http://localhost:8000',
       '/privacy': 'http://localhost:8000',
       '/legal': 'http://localhost:8000',
+      '/push': 'http://localhost:8000',
     }
   }
 })

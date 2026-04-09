@@ -179,22 +179,23 @@ describe('API Client', () => {
 
   describe('BillingAPI', () => {
     it('should create checkout session', async () => {
-      const mockResponse = { url: 'https://checkout.stripe.com/session123' }
+      const mockResponse = { url: 'https://checkout.paystack.com/test123' }
 
       mockPost.mockResolvedValueOnce({ data: mockResponse })
 
-      const result = await BillingAPI.checkout('pro')
+      const result = await BillingAPI.checkout({ plan: 'pro', email: 'test@example.com' })
 
       expect(result).toEqual(mockResponse)
-      expect(result.url).toBe('https://checkout.stripe.com/session123')
+      expect(result.url).toBe('https://checkout.paystack.com/test123')
     })
 
     it('should get billing config', async () => {
       const mockConfig = {
-        publishable_key: 'pk_test_123',
-        prices: {
-          pro: { id: 'price_pro', amount: 19000 },
-          business: { id: 'price_business', amount: 22000 },
+        provider: 'paystack',
+        paystack: {
+          public_key: 'pk_test_123',
+          plan_code: 'PLN_test',
+          currency: 'ZAR',
         },
       }
 
@@ -202,18 +203,8 @@ describe('API Client', () => {
 
       const result = await BillingAPI.config()
 
-      expect(result.prices.pro).toBeDefined()
-      expect(result.prices.business).toBeDefined()
-    })
-
-    it('should get portal session', async () => {
-      const mockResponse = { url: 'https://billing.stripe.com/portal123' }
-
-      mockPost.mockResolvedValueOnce({ data: mockResponse })
-
-      const result = await BillingAPI.portal()
-
-      expect(result.url).toBe('https://billing.stripe.com/portal123')
+      expect(result.provider).toBe('paystack')
+      expect(result.paystack).toBeDefined()
     })
   })
 

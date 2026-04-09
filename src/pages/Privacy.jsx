@@ -39,7 +39,7 @@ export default function Privacy() {
             <ul>
               <li><strong>Account Information:</strong> Name, email address, password, store name</li>
               <li><strong>Business Data:</strong> Products, sales records, customer information, employee data</li>
-              <li><strong>Payment Information:</strong> Billing address, payment method (processed by Stripe)</li>
+              <li><strong>Payment Information:</strong> Billing address, payment method (processed by Paystack)</li>
               <li><strong>Communications:</strong> Support requests, feedback</li>
             </ul>
 

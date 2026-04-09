@@ -25,6 +25,8 @@ import clsx from "clsx";
 import { Logo, LogoIcon } from "./components/Logo";
 import NotificationsBell from "./components/NotificationsBell";
 import CookieConsent from "./components/CookieConsent";
+import { useQuery } from "@tanstack/react-query";
+import { PlanAPI } from "./api/client";
 
 const navItems = [
   { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell", adminOnly: false },
@@ -164,7 +166,20 @@ function Sidebar({ mobile, onClose }) {
   const { t } = useTranslation();
   const { isAdmin } = useAuth();
 
-  const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
+  const planQuery = useQuery({
+    queryKey: ["plan"],
+    queryFn: () => PlanAPI.get(),
+    staleTime: 30000,
+  });
+  const isSubscribedOrTrial = !!(planQuery.data?.is_active || planQuery.data?.is_on_trial);
+
+  const visibleNavItems = navItems
+    .filter(item => !item.adminOnly || isAdmin)
+    .filter(item => {
+      if (isSubscribedOrTrial) return true;
+      // Minimal mode: keep only core + billing/settings
+      return ["/sell", "/products", "/billing", "/privacy-settings"].includes(item.to);
+    });
 
   return (
     <aside
@@ -299,13 +314,25 @@ function MobileTabBar({ onMore }) {
   const location = useLocation();
   const { t } = useTranslation();
   const { isAdmin } = useAuth();
+  const planQuery = useQuery({
+    queryKey: ["plan"],
+    queryFn: () => PlanAPI.get(),
+    staleTime: 30000,
+  });
+  const isSubscribedOrTrial = !!(planQuery.data?.is_active || planQuery.data?.is_on_trial);
 
   const tabs = [
     { to: "/sell", icon: ShoppingCart, label: t("nav.sell"), adminOnly: false },
     { to: "/products", icon: Package, label: t("nav.products"), adminOnly: false },
     { to: "/reports", icon: BarChart3, label: t("nav.reports"), adminOnly: true },
     { to: "/profile", icon: User, label: t("nav.profile", "Profile"), adminOnly: false },
-  ].filter((tab) => !tab.adminOnly || isAdmin);
+  ]
+    .filter((tab) => !tab.adminOnly || isAdmin)
+    .filter((tab) => {
+      if (isSubscribedOrTrial) return true;
+      // Minimal mode: hide premium tabs like Reports
+      return ["/sell", "/products", "/profile"].includes(tab.to);
+    });
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 safe-bottom">

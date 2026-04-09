@@ -41,6 +41,10 @@ api.interceptors.request.use(async (config) => {
   } catch (e) {
     console.error('[API Client] Error getting session:', e.message)
   }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    config.headers = config.headers || {}
+    config.headers['X-App-Origin'] = window.location.origin
+  }
   return config
 })
 
@@ -83,7 +87,8 @@ export const ReportsAPI = {
 
 export const BillingAPI = {
   checkout: ({ plan, email }) => api.post('/billing/checkout', { plan, email }).then(r => r.data),
-  portal: () => api.post('/billing/portal').then(r => r.data),
+  cancel: () => api.post('/billing/cancel').then(r => r.data),
+  paystackSync: (reference) => api.post('/billing/paystack/sync', { reference }).then(r => r.data),
   config: () => api.get('/billing/config').then(r => r.data),
 }
 

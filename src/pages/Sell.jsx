@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CustomersAPI } from "../api/client";
+import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CustomersAPI, ProfileAPI } from "../api/client";
 import toast from "react-hot-toast";
 import { Button } from "../components/ui/Button";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
@@ -84,6 +84,7 @@ export default function Sell() {
   const [receiptModal, setReceiptModal] = useState({
     open: false,
     saleIds: [],
+    receiptId: "",
     total: 0,
     items: [],
     paymentMethod: "cash",
@@ -111,6 +112,12 @@ export default function Sell() {
     queryFn: () => CustomersAPI.list({ q: customerSearch || undefined }),
     enabled: showCustomerSearch,
     staleTime: 30000,
+  });
+
+  const profileQuery = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => ProfileAPI.get(),
+    staleTime: 60000,
   });
 
   useEffect(() => {
@@ -394,6 +401,7 @@ export default function Sell() {
       setReceiptModal({
         open: true,
         saleIds: [],
+        receiptId: offlineSale.id,
         total: cartTotal,
         items: offlineSale.items,
         paymentMethod: paymentMethod,
@@ -425,6 +433,7 @@ export default function Sell() {
       setReceiptModal({
         open: true,
         saleIds: sales.map((s) => s.id),
+        receiptId: sales?.[0]?.id ? String(sales[0].id) : "",
         total: cartTotal,
         items: cart.map((item) => ({
           name: item.product.name,
@@ -502,6 +511,7 @@ export default function Sell() {
     setReceiptModal({
       open: false,
       saleIds: [],
+      receiptId: "",
       total: 0,
       items: [],
       paymentMethod: "cash",
@@ -833,6 +843,21 @@ export default function Sell() {
 
             {/* Receipt Details */}
             <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 mb-6 space-y-3">
+              {/* Store info */}
+              <div className="text-center pb-3 border-b border-dashed border-slate-200 dark:border-slate-600">
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                  {profileQuery.data?.store_name || "Your Store"}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {new Date().toLocaleString()}
+                </p>
+                {receiptModal.receiptId && (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-1">
+                    Receipt #{receiptModal.receiptId}
+                  </p>
+                )}
+              </div>
+
               {/* Items */}
               <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-600">
                 {receiptModal.items.map((item, idx) => (

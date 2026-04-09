@@ -48,7 +48,6 @@ export default function Profile() {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Subscription state
-  const [portalLoading, setPortalLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
 
   // Notification settings
@@ -72,7 +71,7 @@ export default function Profile() {
     staleTime: 30000,
   });
 
-  const billingProvider = (billingConfigQuery.data?.provider || "stripe").toLowerCase();
+  const billingProvider = (billingConfigQuery.data?.provider || "paystack").toLowerCase();
 
   const notificationSettingsQuery = useQuery({
     queryKey: ["notification-settings"],
@@ -89,7 +88,7 @@ export default function Profile() {
   const currentPlan = planQuery.data?.plan || "free";
   const status = planQuery.data?.status || "expired";
   const isActive = planQuery.data?.is_active || false;
-  const hasStripeSubscription = planQuery.data?.has_stripe_subscription;
+  const hasPaystackSubscription = planQuery.data?.has_paystack_subscription;
   const trialEnd = planQuery.data?.trial_end;
   const periodEnd = planQuery.data?.current_period_end;
   const emailConfigured = notificationStatusQuery.data?.email_configured;
@@ -177,34 +176,18 @@ export default function Profile() {
     }
   };
 
-  const handleOpenBillingPortal = async () => {
-    if (billingProvider === "paystack") {
-      toast("Paystack subscriptions are managed via Paystack. Check your Paystack emails or dashboard.");
-      return;
-    }
-    try {
-      setPortalLoading(true);
-      const { url } = await BillingAPI.portal();
-      window.location.assign(url);
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || "Failed to open billing portal");
-    } finally {
-      setPortalLoading(false);
-    }
-  };
 
   const handleCancelSubscription = async () => {
-    if (billingProvider === "paystack") {
-      toast("To cancel with Paystack, use your Paystack dashboard or the links in your Paystack subscription emails.");
+    if (!window.confirm('Are you sure you want to cancel your subscription? You will lose access to Pro features.')) {
       return;
     }
     try {
       setCancelLoading(true);
-      // This will redirect to Stripe portal where they can cancel
-      const { url } = await BillingAPI.portal();
-      window.location.assign(url);
+      await BillingAPI.cancel();
+      toast.success('Subscription canceled');
+      queryClient.invalidateQueries({ queryKey: ['plan'] });
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Failed to open cancellation page");
+      toast.error(e?.response?.data?.detail || "Failed to cancel subscription");
     } finally {
       setCancelLoading(false);
     }
@@ -390,39 +373,20 @@ export default function Profile() {
               onClick={() => navigate("/billing")}
             >
               <Zap className="w-4 h-4 mr-1" />
-              {isActive ? "Change Plan" : "Upgrade"}
+              {isActive ? "Billing & subscription" : "Upgrade"}
             </Button>
 
-            {billingProvider === "stripe" && hasStripeSubscription && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenBillingPortal}
-                  disabled={portalLoading}
-                >
-                  <CreditCard className="w-4 h-4 mr-1" />
-                  {portalLoading ? "Loading..." : "Billing Portal"}
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  onClick={handleCancelSubscription}
-                  disabled={cancelLoading}
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  {cancelLoading ? "Loading..." : "Cancel Subscription"}
-                </Button>
-              </>
-            )}
-
-            {billingProvider === "paystack" && isActive && (
-              <div className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
-                Subscriptions are managed by Paystack. Use your Paystack dashboard (or the links in Paystack emails) to
-                cancel or update your payment method.
-              </div>
+            {isActive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading}
+              >
+                <X className="w-4 h-4 mr-1" />
+                {cancelLoading ? "Canceling..." : "Cancel Subscription"}
+              </Button>
             )}
           </div>
         </CardContent>

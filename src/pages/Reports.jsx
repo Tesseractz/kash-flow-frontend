@@ -122,8 +122,10 @@ export default function Reports() {
   const analyticsData = analyticsQuery.data || cachedData.analytics?.[days]
   const usingCachedReport = !reportQuery.data && !!cachedData.reports?.[date]
   const usingCachedAnalytics = !analyticsQuery.data && !!cachedData.analytics?.[days]
-  // If plan hasn't loaded yet, keep showing cached analytics (prevents "charts disappeared" flash)
-  const allowAdvancedUI = !!canViewAdvanced || (!planKnown && usingCachedAnalytics)
+  // Only show advanced/cached analytics when the last loaded plan allows it (avoids ex-Pro cache on Free).
+  const allowAdvancedUI =
+    !!canViewAdvanced ||
+    (usingCachedAnalytics && !!planQuery.data?.limits?.advanced_reports)
   
   const totals = reportData?.totals || {}
   const transactions = reportData?.transactions || []
