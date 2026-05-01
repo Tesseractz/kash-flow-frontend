@@ -222,7 +222,9 @@ export default function PrivacySettings() {
               <Bell className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="font-medium text-gray-900 dark:text-white">Push Notifications</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Receive real-time alerts in your browser</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Sync your preference with KashPoint. Use “System & device notifications” below to allow OS alerts.
+                </p>
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 self-start sm:self-center">
@@ -237,7 +239,7 @@ export default function PrivacySettings() {
             </label>
           </div>
 
-          <DevicePushSetup enabled={settings?.push_notifications_enabled === true} />
+          <DevicePushSetup />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">

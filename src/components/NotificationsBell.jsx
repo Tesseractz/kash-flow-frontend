@@ -15,18 +15,41 @@ import {
   AlertsAPI,
   NotificationsAPI,
   PlanAPI,
+  PrivacyAPI,
+  PushAPI,
   ReportsAPI,
 } from "../api/client";
 import { Button } from "./ui/Button";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { enrollPushNotifications, isPushSupported } from "../lib/push";
 
 const getTodayUtc = () => new Date().toISOString().slice(0, 10);
+
+function readNotificationPermission() {
+  try {
+    return typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+  } catch (_) {
+    return "unsupported";
+  }
+}
 
 export default function NotificationsBell() {
   const isOnline = useOnlineStatus();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [osPushBusy, setOsPushBusy] = useState(false);
+  const [notifPerm, setNotifPerm] = useState(readNotificationPermission);
   const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const sync = () => setNotifPerm(readNotificationPermission());
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -111,6 +134,33 @@ export default function NotificationsBell() {
   const totalProfit = Number(totals.total_profit || 0);
   const totalSales = Number(totals.total_sales_count || 0);
 
+  const showOsPushHint =
+    isOnline &&
+    isPushSupported() &&
+    notifPerm === "default";
+
+  const onEnableOsPush = async () => {
+    setOsPushBusy(true);
+    try {
+      await enrollPushNotifications();
+      await PrivacyAPI.updateSettings({ push_notifications_enabled: true });
+      await qc.invalidateQueries({ queryKey: ["privacy-settings"] });
+      setNotifPerm(readNotificationPermission());
+      try {
+        await PushAPI.test();
+        toast.success("Check for a system notification from KashPoint.");
+      } catch (_) {
+        toast.success("System notifications enabled for this device.");
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.detail || e?.message || "Could not enable notifications";
+      toast.error(typeof msg === "string" ? msg : "Could not enable notifications");
+      setNotifPerm(readNotificationPermission());
+    } finally {
+      setOsPushBusy(false);
+    }
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -148,6 +198,23 @@ export default function NotificationsBell() {
               Manage
             </Link>
           </div>
+
+          {showOsPushHint && (
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-blue-50/80 dark:bg-blue-950/30">
+              <p className="text-xs text-slate-600 dark:text-slate-300 mb-2">
+                Get low-stock and alerts outside the app — in your system notification area.
+              </p>
+              <Button
+                size="xs"
+                variant="primary"
+                className="w-full"
+                disabled={osPushBusy}
+                onClick={onEnableOsPush}
+              >
+                {osPushBusy ? "Opening…" : "Allow system notifications"}
+              </Button>
+            </div>
+          )}
 
           {!isOnline && (
             <div className="px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">

@@ -1,61 +1,69 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import DevicePushSetup from './DevicePushSetup'
 
-const subscribeMock = vi.fn()
 const testMock = vi.fn()
+const privacyUpdateMock = vi.fn()
+
+let isPushSupportedValue = true
+const enrollPushMock = vi.fn()
 
 vi.mock('../api/client', () => ({
   PushAPI: {
-    subscribe: (...args) => subscribeMock(...args),
     test: (...args) => testMock(...args),
+  },
+  PrivacyAPI: {
+    updateSettings: (...args) => privacyUpdateMock(...args),
   },
 }))
 
-const ensurePushSubscriptionMock = vi.fn()
-const subscriptionToPayloadMock = vi.fn()
-
 vi.mock('../lib/push', () => ({
-  ensurePushSubscription: (...args) => ensurePushSubscriptionMock(...args),
-  subscriptionToPayload: (...args) => subscriptionToPayloadMock(...args),
+  isPushSupported: () => isPushSupportedValue,
+  enrollPushNotifications: (...args) => enrollPushMock(...args),
 }))
+
+function renderWithQuery(ui) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
 
 describe('DevicePushSetup', () => {
   beforeEach(() => {
-    subscribeMock.mockReset()
+    isPushSupportedValue = true
     testMock.mockReset()
-    ensurePushSubscriptionMock.mockReset()
-    subscriptionToPayloadMock.mockReset()
+    privacyUpdateMock.mockReset()
+    enrollPushMock.mockReset()
+    enrollPushMock.mockResolvedValue({})
+    privacyUpdateMock.mockResolvedValue({})
+    testMock.mockResolvedValue({ sent: 1 })
   })
 
-  it('renders nothing when not enabled', () => {
-    const { container } = render(<DevicePushSetup enabled={false} />)
-    expect(container).toBeEmptyDOMElement()
+  it('shows unsupported message when push is not available', () => {
+    isPushSupportedValue = false
+    const { container } = renderWithQuery(<DevicePushSetup />)
+    expect(container.textContent).toMatch(/not available in this browser/i)
   })
 
-  it('requests subscription only on button click', async () => {
-    // minimal browser support
+  it('enrolls push only on button click', async () => {
     Object.defineProperty(navigator, 'serviceWorker', { value: {}, configurable: true })
     Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
-
-    // permission state used for label only
     Object.defineProperty(globalThis, 'Notification', {
       value: { permission: 'default' },
       configurable: true,
     })
 
-    ensurePushSubscriptionMock.mockResolvedValue({ toJSON: () => ({ endpoint: 'e', keys: { p256dh: 'p', auth: 'a' } }) })
-    subscriptionToPayloadMock.mockReturnValue({ endpoint: 'e', keys: { p256dh: 'p', auth: 'a' } })
-    subscribeMock.mockResolvedValue({ success: true })
-    testMock.mockResolvedValue({ sent: 1 })
+    renderWithQuery(<DevicePushSetup />)
 
-    render(<DevicePushSetup enabled />)
-
-    expect(ensurePushSubscriptionMock).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Enable notifications/i }))
-    expect(ensurePushSubscriptionMock).toHaveBeenCalledTimes(1)
+    expect(enrollPushMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /Allow system notifications/i }))
+    await waitFor(() => {
+      expect(enrollPushMock).toHaveBeenCalledTimes(1)
+    })
+    expect(privacyUpdateMock).toHaveBeenCalledWith({ push_notifications_enabled: true })
   })
 })
-

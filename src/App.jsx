@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import { Logo, LogoIcon } from "./components/Logo";
 import NotificationsBell from "./components/NotificationsBell";
+import PushNotificationBanner from "./components/PushNotificationBanner";
 import CookieConsent from "./components/CookieConsent";
 import { useQuery } from "@tanstack/react-query";
 import { PlanAPI } from "./api/client";
@@ -426,9 +427,12 @@ export default function App() {
         <MobileHeader onMenuOpen={() => setMobileMenuOpen(true)} />
         <DesktopHeader />
 
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 mobile-main-offset mobile-bottom-offset overflow-x-hidden min-w-0">
-          <div className="max-w-7xl mx-auto w-full">
-            <Outlet />
+        <main className="flex-1 flex flex-col p-0 mobile-main-offset mobile-bottom-offset overflow-x-hidden min-w-0">
+          <PushNotificationBanner />
+          <div className="flex-1 p-3 sm:p-4 lg:p-8 w-full min-w-0">
+            <div className="max-w-7xl mx-auto w-full">
+              <Outlet />
+            </div>
           </div>
         </main>
       </div>

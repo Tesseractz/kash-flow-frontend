@@ -1,5 +1,15 @@
 import { PushAPI } from '../api/client'
 
+/** True when Web Push + Notifications API can be used (requires HTTPS or localhost). */
+export function isPushSupported() {
+  return (
+    typeof window !== 'undefined' &&
+    'serviceWorker' in navigator &&
+    typeof Notification !== 'undefined' &&
+    'PushManager' in window
+  )
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -45,5 +55,15 @@ export function subscriptionToPayload(subscription) {
       auth: json.keys?.auth,
     },
   }
+}
+
+/**
+ * Request OS notification permission (if needed), subscribe with VAPID, register endpoint on the server.
+ * Call after a user gesture (button click) so the browser shows the permission prompt.
+ */
+export async function enrollPushNotifications() {
+  const sub = await ensurePushSubscription()
+  await PushAPI.subscribe(subscriptionToPayload(sub))
+  return sub
 }
 
