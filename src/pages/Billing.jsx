@@ -53,14 +53,32 @@ function daysUntil(isoString) {
   }
 }
 
+// Verification states for the post-checkout flow. Drives the inline
+// banner the user sees while we confirm with Paystack.
+//   idle             — no checkout in progress
+//   verifying        — Paystack call in flight (after closing in-app browser, or on web success URL)
+//   uncertain        — we couldn't confirm yet; show retry + manual help
+//   abandoned        — Paystack says the transaction was not successful
+const VERIFY = {
+  IDLE: 'idle',
+  VERIFYING: 'verifying',
+  UNCERTAIN: 'uncertain',
+  ABANDONED: 'abandoned',
+}
+
 export default function Billing() {
   const qc = useQueryClient();
   const [loading, setLoading] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
-  const [syncing, setSyncing] = useState(false)
+  const [verifyState, setVerifyState] = useState(VERIFY.IDLE)
+  const [verifyMessage, setVerifyMessage] = useState('')
+  const [pendingReference, setPendingReference] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const syncAttempted = useRef(false)
+
+  // Backward-compat for any code below that still reads `syncing`.
+  const syncing = verifyState === VERIFY.VERIFYING
 
   const billingConfigQuery = useQuery({
     queryKey: ['billing-config'],
@@ -75,6 +93,23 @@ export default function Billing() {
     queryFn: () => PlanAPI.get(),
     staleTime: 30000,
   })
+
+  // Direct Paystack verification using a transaction reference. Returns:
+  //   { ok: true }                  — plan is now active (server already flipped it)
+  //   { ok: false, abandoned: true} — Paystack says the transaction wasn't successful
+  //   { ok: false }                 — transient failure; caller may retry
+  const verifyByReference = async (reference) => {
+    if (!reference) return { ok: false }
+    try {
+      await BillingAPI.paystackSync(reference)
+      await qc.invalidateQueries({ queryKey: ['plan'] })
+      return { ok: true }
+    } catch (e) {
+      const detail = (e?.response?.data?.detail || '').toString()
+      const abandoned = /not successful|abandoned|failed/i.test(detail)
+      return { ok: false, abandoned, detail }
+    }
+  }
 
   useEffect(() => {
     if (billingConfigQuery.isLoading) return
@@ -93,19 +128,28 @@ export default function Billing() {
 
     if (billingProvider === 'paystack' && ref && !syncAttempted.current) {
       syncAttempted.current = true
-      setSyncing(true)
+      setVerifyState(VERIFY.VERIFYING)
+      setVerifyMessage('Verifying payment with Paystack…')
       ;(async () => {
-        try {
-          await BillingAPI.paystackSync(ref)
+        const result = await verifyByReference(ref)
+        if (result.ok) {
+          setVerifyState(VERIFY.IDLE)
+          setPendingReference(null)
           toast.success('Payment verified! Your Pro plan is now active.')
-          qc.invalidateQueries({ queryKey: ['plan'] })
-        } catch (e) {
+        } else if (result.abandoned) {
+          setVerifyState(VERIFY.ABANDONED)
+          setVerifyMessage(result.detail || 'Payment was not completed.')
+          setPendingReference(ref)
+        } else {
           syncAttempted.current = false
-          toast.error(e?.response?.data?.detail || 'Could not verify payment. Try refreshing the page.')
-        } finally {
-          setSyncing(false)
-          setSearchParams({}, { replace: true })
+          setVerifyState(VERIFY.UNCERTAIN)
+          setVerifyMessage(
+            result.detail ||
+              'We couldn\'t reach Paystack to verify. Click "Check status" to retry.',
+          )
+          setPendingReference(ref)
         }
+        setSearchParams({}, { replace: true })
       })()
       return
     }
@@ -130,25 +174,34 @@ export default function Billing() {
   const trialDaysLeft = daysUntil(trialEnd)
   const isTrialing = status === 'trialing' && trialDaysLeft !== null && trialDaysLeft > 0
 
-  // On Capacitor we open Paystack in an in-app browser (the WebView stays
-  // alive in the background). Paystack's webhook updates Supabase on its
-  // own — so when the user dismisses the in-app browser we just poll the
-  // plan endpoint for a short window and let the UI react when status flips.
-  const pollPlanUntilActive = async ({ timeoutMs = 30000, intervalMs = 2500 } = {}) => {
-    const deadline = Date.now() + timeoutMs
-    while (Date.now() < deadline) {
-      try {
-        const plan = await PlanAPI.get()
-        if (plan?.is_active) {
-          qc.setQueryData(['plan'], plan)
-          return true
-        }
-      } catch (_) {
-        // ignore transient errors and keep polling
-      }
-      await new Promise((r) => setTimeout(r, intervalMs))
+  // Manual "Check status" button on the inline verification card.
+  // Same logic as the post-checkout path — verify with the reference,
+  // promote to the appropriate state.
+  const retryVerification = async () => {
+    if (!pendingReference) return
+    setVerifyState(VERIFY.VERIFYING)
+    setVerifyMessage('Checking with Paystack…')
+    const result = await verifyByReference(pendingReference)
+    if (result.ok) {
+      setVerifyState(VERIFY.IDLE)
+      setPendingReference(null)
+      toast.success('Subscription activated!')
+    } else if (result.abandoned) {
+      setVerifyState(VERIFY.ABANDONED)
+      setVerifyMessage(result.detail || 'Payment was not completed.')
+    } else {
+      setVerifyState(VERIFY.UNCERTAIN)
+      setVerifyMessage(
+        result.detail ||
+          'Still no confirmation. Paystack can take a minute after payment — try again shortly.',
+      )
     }
-    return false
+  }
+
+  const dismissVerification = () => {
+    setVerifyState(VERIFY.IDLE)
+    setPendingReference(null)
+    setVerifyMessage('')
   }
 
   const upgrade = async (planId) => {
@@ -156,36 +209,69 @@ export default function Billing() {
       toast('You are already on this plan')
       return
     }
+    let reference = null
     try {
       setLoading(true)
       const email = user?.email || user?.user_metadata?.email || ''
-      const { url } = await BillingAPI.checkout({ plan: planId, email })
+      const checkoutResp = await BillingAPI.checkout({ plan: planId, email })
+      reference = checkoutResp?.reference || null
 
-      const opened = await openExternalUrl(url)
+      const opened = await openExternalUrl(checkoutResp.url)
 
       if (opened.kind === 'in-app-browser') {
         // Native shell: wait for the user to close Paystack, then verify.
+        // Direct verification with the reference is the source of truth —
+        // we no longer wait for the webhook to round-trip through the DB.
         await opened.onClosed
-        setSyncing(true)
-        const verifyToast = toast.loading('Verifying payment…')
-        const activated = await pollPlanUntilActive()
-        toast.dismiss(verifyToast)
-        if (activated) {
-          toast.success('Subscription activated!')
-        } else {
-          toast(
-            'Payment not confirmed yet. If you completed checkout, refresh in a minute.',
-            { duration: 6000 },
-          )
+        setVerifyState(VERIFY.VERIFYING)
+        setVerifyMessage('Verifying payment with Paystack…')
+
+        if (!reference) {
+          // Older backends didn't return a reference. Fall back to short
+          // polling so an existing webhook still has a chance to land.
+          let active = false
+          for (let i = 0; i < 8 && !active; i++) {
+            await new Promise((r) => setTimeout(r, 2500))
+            try {
+              const plan = await PlanAPI.get()
+              if (plan?.is_active) { qc.setQueryData(['plan'], plan); active = true }
+            } catch (_) {}
+          }
+          if (active) {
+            setVerifyState(VERIFY.IDLE)
+            toast.success('Subscription activated!')
+          } else {
+            setVerifyState(VERIFY.UNCERTAIN)
+            setVerifyMessage(
+              'No reference was returned by the server — we can\'t verify automatically. Refresh in a minute, or contact support if you were charged.',
+            )
+          }
+          return
         }
-        setSyncing(false)
-        qc.invalidateQueries({ queryKey: ['plan'] })
+
+        const result = await verifyByReference(reference)
+        if (result.ok) {
+          setVerifyState(VERIFY.IDLE)
+          setPendingReference(null)
+          toast.success('Subscription activated!')
+        } else if (result.abandoned) {
+          setVerifyState(VERIFY.ABANDONED)
+          setVerifyMessage(result.detail || 'Payment was not completed.')
+          setPendingReference(reference)
+        } else {
+          setVerifyState(VERIFY.UNCERTAIN)
+          setVerifyMessage(
+            result.detail ||
+              'Paystack didn\'t confirm yet. Click "Check status" in a minute to retry.',
+          )
+          setPendingReference(reference)
+        }
       }
       // Web/Electron: openExternalUrl navigated the current page; the
       // success path is handled by the `?success=1` useEffect on return.
     } catch (e) {
+      setVerifyState(VERIFY.IDLE)
       toast.error(e?.response?.data?.detail || 'Failed to start checkout')
-      setSyncing(false)
     } finally {
       setLoading(false)
     }
@@ -270,14 +356,74 @@ export default function Billing() {
         </p>
       </div>
 
-      {syncing && (
+      {verifyState === VERIFY.VERIFYING && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
           <CardContent className="py-4">
             <div className="flex items-center gap-3 justify-center">
               <Loader2 className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
               <p className="text-blue-800 dark:text-blue-200 font-medium">
-                Verifying your payment with Paystack...
+                {verifyMessage || 'Verifying your payment with Paystack…'}
               </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {verifyState === VERIFY.UNCERTAIN && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
+          <CardContent className="py-4 sm:py-5">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-amber-900 dark:text-amber-100">
+                  We're still confirming your payment
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  {verifyMessage ||
+                    'Paystack can take up to a minute to confirm a successful payment. Tap "Check status" to retry.'}
+                </p>
+                {pendingReference && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-mono break-all">
+                    Reference: {pendingReference}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Button size="sm" variant="primary" onClick={retryVerification}>
+                    <RefreshCw className="w-4 h-4 mr-1.5" />
+                    Check status
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={dismissVerification}>
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {verifyState === VERIFY.ABANDONED && (
+        <Card className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20">
+          <CardContent className="py-4 sm:py-5">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+              <X className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-red-900 dark:text-red-100">
+                  Payment was not completed
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  {verifyMessage ||
+                    "Paystack reports this transaction as unsuccessful. Try again, or contact support if you were charged."}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Button size="sm" variant="primary" onClick={() => upgrade('pro')} disabled={loading}>
+                    Try again
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={dismissVerification}>
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -416,7 +562,7 @@ export default function Billing() {
         </Card>
       )}
 
-      {!isActive && !isTrialing && !syncing && (
+      {!isActive && !isTrialing && verifyState === VERIFY.IDLE && (
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
