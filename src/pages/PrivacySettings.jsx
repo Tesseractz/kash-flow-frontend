@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PrivacyAPI } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
@@ -44,9 +46,12 @@ const formatDate = (dateStr) => {
 
 export default function PrivacySettings() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { signOut } = useAuth()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteReason, setDeleteReason] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
+  const [deleteMode, setDeleteMode] = useState('schedule') // 'schedule' | 'immediate'
 
   // Queries
   const { data: settings, isLoading: loadingSettings } = useQuery({
@@ -71,6 +76,15 @@ export default function PrivacySettings() {
     queryFn: PrivacyAPI.getDataExportRequests,
   })
   const exportRequests = Array.isArray(exportRequestsData) ? exportRequestsData : []
+
+  const { data: deletionRequestsData } = useQuery({
+    queryKey: ['account-deletion-requests'],
+    queryFn: PrivacyAPI.getAccountDeletionRequests,
+  })
+  const deletionRequests = Array.isArray(deletionRequestsData) ? deletionRequestsData : []
+  const pendingDeletion = deletionRequests.find(
+    (r) => r.status === 'pending' || r.status === 'confirmed'
+  )
 
   // Mutations
   const updateSettingsMutation = useMutation({
@@ -131,6 +145,7 @@ export default function PrivacySettings() {
   const requestDeletionMutation = useMutation({
     mutationFn: PrivacyAPI.requestAccountDeletion,
     onSuccess: () => {
+      queryClient.invalidateQueries(['account-deletion-requests'])
       toast.success('Deletion request submitted. You have 30 days to cancel.')
       setDeleteDialogOpen(false)
       setDeleteReason('')
@@ -138,6 +153,29 @@ export default function PrivacySettings() {
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Failed to request deletion')
+    },
+  })
+
+  const cancelDeletionMutation = useMutation({
+    mutationFn: PrivacyAPI.cancelAccountDeletion,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['account-deletion-requests'])
+      toast.success('Deletion request cancelled.')
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to cancel deletion')
+    },
+  })
+
+  const executeDeletionMutation = useMutation({
+    mutationFn: PrivacyAPI.executeAccountDeletion,
+    onSuccess: async () => {
+      toast.success('Account deleted.')
+      try { await signOut() } catch (_) {}
+      navigate('/auth', { replace: true })
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete account')
     },
   })
 
@@ -167,10 +205,23 @@ export default function PrivacySettings() {
       toast.error('Please enter your password to confirm')
       return
     }
-    requestDeletionMutation.mutate({
+    const payload = {
       reason: deleteReason,
-      confirm_password: deletePassword
-    })
+      confirm_password: deletePassword,
+    }
+    if (deleteMode === 'immediate') {
+      if (!window.confirm('This will permanently delete your account and ALL data right now. Continue?')) {
+        return
+      }
+      executeDeletionMutation.mutate(payload)
+    } else {
+      requestDeletionMutation.mutate(payload)
+    }
+  }
+
+  const openDeleteDialog = (mode = 'schedule') => {
+    setDeleteMode(mode)
+    setDeleteDialogOpen(true)
   }
 
   const pendingExport = exportRequests.find(r => r.status === 'pending' || r.status === 'processing')
@@ -416,21 +467,66 @@ export default function PrivacySettings() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-            <h4 className="font-medium text-red-900 dark:text-red-100">Delete Account</h4>
-            <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-              Permanently delete your account and all associated data. This action cannot be undone.
-              You will have 30 days to cancel before final deletion.
-            </p>
-            <Button
-              variant="destructive"
-              className="mt-3"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete My Account
-            </Button>
-          </div>
+          {pendingDeletion ? (
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-amber-900 dark:text-amber-100">
+                    Account scheduled for deletion
+                  </h4>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    Requested on {formatDate(pendingDeletion.requested_at)}.
+                    {pendingDeletion.scheduled_deletion_at && (
+                      <> Final deletion on <strong>{formatDate(pendingDeletion.scheduled_deletion_at)}</strong>.</>
+                    )}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => cancelDeletionMutation.mutate(pendingDeletion.id)}
+                      disabled={cancelDeletionMutation.isPending}
+                    >
+                      <X className="w-4 h-4 mr-1.5" />
+                      Cancel deletion
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openDeleteDialog('immediate')}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1.5" />
+                      Delete immediately
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <h4 className="font-medium text-red-900 dark:text-red-100">Delete Account</h4>
+              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                Permanently delete your account and all associated data. This action cannot be undone.
+                You will have 30 days to cancel before final deletion.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Button
+                  variant="destructive"
+                  onClick={() => openDeleteDialog('schedule')}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete My Account
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => openDeleteDialog('immediate')}
+                >
+                  Delete Immediately
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -440,26 +536,30 @@ export default function PrivacySettings() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />
-              Delete Account
+              {deleteMode === 'immediate' ? 'Delete Account Immediately' : 'Delete Account'}
             </DialogTitle>
             <DialogDescription>
-              This action will schedule your account for permanent deletion. You have 30 days to cancel.
+              {deleteMode === 'immediate'
+                ? 'This will permanently delete your account and all data right now. There is no recovery.'
+                : 'This will schedule your account for permanent deletion. You have 30 days to cancel.'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Reason for leaving (optional)
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 min-h-[80px]"
-                placeholder="Help us improve by telling us why you're leaving..."
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-              />
-            </div>
-            
+            {deleteMode !== 'immediate' && (
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Reason for leaving (optional)
+                </label>
+                <textarea
+                  className="w-full px-3 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 min-h-[80px]"
+                  placeholder="Help us improve by telling us why you're leaving..."
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium mb-1">
                 Confirm Password *
@@ -472,12 +572,36 @@ export default function PrivacySettings() {
               />
             </div>
 
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-sm">
-              <p className="font-medium text-yellow-800 dark:text-yellow-200">What happens next:</p>
-              <ul className="mt-1 text-yellow-700 dark:text-yellow-300 list-disc list-inside">
-                <li>Your account will be scheduled for deletion in 30 days</li>
-                <li>You can cancel anytime before that</li>
-                <li>After 30 days, all data will be permanently deleted</li>
+            <div className={`p-3 rounded-lg text-sm ${
+              deleteMode === 'immediate'
+                ? 'bg-red-50 dark:bg-red-900/20'
+                : 'bg-yellow-50 dark:bg-yellow-900/20'
+            }`}>
+              <p className={`font-medium ${
+                deleteMode === 'immediate'
+                  ? 'text-red-800 dark:text-red-200'
+                  : 'text-yellow-800 dark:text-yellow-200'
+              }`}>
+                What happens next:
+              </p>
+              <ul className={`mt-1 list-disc list-inside ${
+                deleteMode === 'immediate'
+                  ? 'text-red-700 dark:text-red-300'
+                  : 'text-yellow-700 dark:text-yellow-300'
+              }`}>
+                {deleteMode === 'immediate' ? (
+                  <>
+                    <li>Your account, store, products, sales, and customers are removed immediately</li>
+                    <li>You will be signed out and returned to the login page</li>
+                    <li>This cannot be undone</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Your account will be scheduled for deletion in 30 days</li>
+                    <li>You can cancel anytime before that</li>
+                    <li>After 30 days, all data will be permanently deleted</li>
+                  </>
+                )}
               </ul>
             </div>
           </div>
@@ -489,9 +613,15 @@ export default function PrivacySettings() {
             <Button
               variant="destructive"
               onClick={handleDeleteRequest}
-              disabled={requestDeletionMutation.isPending || !deletePassword}
+              disabled={
+                requestDeletionMutation.isPending ||
+                executeDeletionMutation.isPending ||
+                !deletePassword
+              }
             >
-              {requestDeletionMutation.isPending ? 'Processing...' : 'Request Deletion'}
+              {deleteMode === 'immediate'
+                ? (executeDeletionMutation.isPending ? 'Deleting…' : 'Delete Now')
+                : (requestDeletionMutation.isPending ? 'Processing...' : 'Request Deletion')}
             </Button>
           </DialogFooter>
         </DialogContent>

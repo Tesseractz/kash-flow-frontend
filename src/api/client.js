@@ -211,6 +211,8 @@ export const PrivacyAPI = {
   // Account Deletion
   requestAccountDeletion: (data) => api.post('/privacy/delete-account', data).then(r => r.data),
   cancelAccountDeletion: (requestId) => api.delete(`/privacy/delete-account/${requestId}`).then(r => r.data),
+  executeAccountDeletion: (data) => api.post('/privacy/delete-account/execute', data).then(r => r.data),
+  getAccountDeletionRequests: () => api.get('/privacy/delete-account').then(r => r.data),
   
   // Cookies
   getCookiePreferences: () => api.get('/privacy/cookies').then(r => r.data),

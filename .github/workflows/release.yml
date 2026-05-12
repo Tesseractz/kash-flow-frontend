@@ -1,0 +1,124 @@
+name: Release and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      new_version: ${{ steps.semver.outputs.new_version }}
+    steps:
+      - name: Checkout Code (auth, full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # token: ${{ secrets.GITHUB_TOKEN }}  # optional; checkout uses it by default
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Ensure branch is up to date with main
+        run: |
+          git fetch origin main
+          git pull --rebase origin main
+
+      # Optional guard to prevent loops if this job pushes a [skip ci] commit back to main
+      - name: Skip if this is a skip-ci commit
+        if: contains(github.event.head_commit.message, '[skip ci]')
+        run: |
+          echo "Skipping because [skip ci] present."
+          exit 0
+
+      - name: Get Latest Tag
+        id: get_tag
+        run: |
+          git fetch --tags
+          latest_tag=$(git tag --sort=-v:refname | head -n 1)
+          echo "tag=${latest_tag:-v0.1.0}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine Version Bump
+        id: version
+        run: |
+          bump="patch"
+          message=$(git log -1 --pretty=%B)
+          if echo "$message" | grep -iqE '\[major\]'; then
+            bump="major"
+          elif echo "$message" | grep -iqE '\[minor\]'; then
+            bump="minor"
+          fi
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+
+      - name: Calculate Next Version
+        id: semver
+        run: |
+          current=${{ steps.get_tag.outputs.tag }}
+          IFS='.' read -r major minor patch <<<"${current#v}"
+          bump=${{ steps.version.outputs.bump }}
+          case "$bump" in
+            major) new_version="$((major + 1)).0.0" ;;
+            minor) new_version="$major.$((minor + 1)).0" ;;
+            patch) new_version="$major.$minor.$((patch + 1))" ;;
+          esac
+          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Git identity
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Update version in package manifests
+        run: |
+          new_version=${{ steps.semver.outputs.new_version }}
+          npm version "$new_version" --no-git-tag-version
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to v${new_version} [skip ci]"
+
+      - name: Create and Push Tag + Commit
+        run: |
+          new_tag="v${{ steps.semver.outputs.new_version }}"
+          git tag "$new_tag"
+          # Push the commit and the new tag
+          git push origin HEAD:main
+          git push origin "$new_tag"
+
+  deploy:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code at released tag
+        uses: actions/checkout@v4
+        with:
+          ref: "v${{ needs.release.outputs.new_version }}"
+          fetch-depth: 0   # good practice when working with tags
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          protocol: ftp
+          local-dir: dist/
+          server-dir: /
+
+      - name: Display Deploy Status
+        run: echo "✅ Deployment completed"

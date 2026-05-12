@@ -1,9 +1,33 @@
 import { PushAPI } from '../api/client'
 
-/** True when Web Push + Notifications API can be used (requires HTTPS or localhost). */
+/** True when running inside the Capacitor native shell (iOS/Android app). */
+function isCapacitorNative() {
+  if (typeof window === 'undefined') return false
+  const cap = window.Capacitor
+  if (cap && typeof cap.isNativePlatform === 'function') return cap.isNativePlatform()
+  return !!cap?.isNative
+}
+
+/** True when running inside the Electron desktop shell. */
+function isElectron() {
+  if (typeof window === 'undefined') return false
+  if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().includes('electron')) {
+    return true
+  }
+  return typeof window.process === 'object' && window.process?.versions?.electron != null
+}
+
+/**
+ * True when Web Push + Notifications API can be used.
+ *
+ * Returns false in Capacitor WebViews (no FCM/APNs wiring exists yet) and in
+ * Electron (Chromium's push service is disabled), even though the browser
+ * APIs technically exist — so we don't show users a button that lies.
+ */
 export function isPushSupported() {
+  if (typeof window === 'undefined') return false
+  if (isCapacitorNative() || isElectron()) return false
   return (
-    typeof window !== 'undefined' &&
     'serviceWorker' in navigator &&
     typeof Notification !== 'undefined' &&
     'PushManager' in window
