@@ -7,6 +7,7 @@ import { BillingAPI, PlanAPI } from '../api/client'
 import toast from 'react-hot-toast'
 import { Check, X, Zap, Package, Users, FileText, Bell, Calendar, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { openExternalUrl } from '../lib/platform'
 
 const plan = {
   name: 'Pro',
@@ -129,6 +130,27 @@ export default function Billing() {
   const trialDaysLeft = daysUntil(trialEnd)
   const isTrialing = status === 'trialing' && trialDaysLeft !== null && trialDaysLeft > 0
 
+  // On Capacitor we open Paystack in an in-app browser (the WebView stays
+  // alive in the background). Paystack's webhook updates Supabase on its
+  // own — so when the user dismisses the in-app browser we just poll the
+  // plan endpoint for a short window and let the UI react when status flips.
+  const pollPlanUntilActive = async ({ timeoutMs = 30000, intervalMs = 2500 } = {}) => {
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      try {
+        const plan = await PlanAPI.get()
+        if (plan?.is_active) {
+          qc.setQueryData(['plan'], plan)
+          return true
+        }
+      } catch (_) {
+        // ignore transient errors and keep polling
+      }
+      await new Promise((r) => setTimeout(r, intervalMs))
+    }
+    return false
+  }
+
   const upgrade = async (planId) => {
     if (planId === currentPlan && isActive) {
       toast('You are already on this plan')
@@ -138,9 +160,32 @@ export default function Billing() {
       setLoading(true)
       const email = user?.email || user?.user_metadata?.email || ''
       const { url } = await BillingAPI.checkout({ plan: planId, email })
-      window.location.assign(url)
+
+      const opened = await openExternalUrl(url)
+
+      if (opened.kind === 'in-app-browser') {
+        // Native shell: wait for the user to close Paystack, then verify.
+        await opened.onClosed
+        setSyncing(true)
+        const verifyToast = toast.loading('Verifying payment…')
+        const activated = await pollPlanUntilActive()
+        toast.dismiss(verifyToast)
+        if (activated) {
+          toast.success('Subscription activated!')
+        } else {
+          toast(
+            'Payment not confirmed yet. If you completed checkout, refresh in a minute.',
+            { duration: 6000 },
+          )
+        }
+        setSyncing(false)
+        qc.invalidateQueries({ queryKey: ['plan'] })
+      }
+      // Web/Electron: openExternalUrl navigated the current page; the
+      // success path is handled by the `?success=1` useEffect on return.
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to start checkout')
+      setSyncing(false)
     } finally {
       setLoading(false)
     }

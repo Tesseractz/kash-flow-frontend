@@ -1,21 +1,5 @@
 import { PushAPI } from '../api/client'
-
-/** True when running inside the Capacitor native shell (iOS/Android app). */
-function isCapacitorNative() {
-  if (typeof window === 'undefined') return false
-  const cap = window.Capacitor
-  if (cap && typeof cap.isNativePlatform === 'function') return cap.isNativePlatform()
-  return !!cap?.isNative
-}
-
-/** True when running inside the Electron desktop shell. */
-function isElectron() {
-  if (typeof window === 'undefined') return false
-  if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().includes('electron')) {
-    return true
-  }
-  return typeof window.process === 'object' && window.process?.versions?.electron != null
-}
+import { isCapacitorNative, isElectron } from './platform'
 
 /**
  * True when Web Push + Notifications API can be used.
