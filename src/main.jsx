@@ -22,10 +22,21 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import ProtectedRoute from './components/ProtectedRoute'
 
-// Register service worker (required for Web Push on supported browsers)
+// Register service worker (required for Web Push on supported browsers).
+// `updateViaCache: 'none'` forces the browser to bypass HTTP cache when
+// checking for SW updates, so a new sw.js ships within minutes instead
+// of being held for up to 24h by Chromium's default caching policy.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
+    navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        // Proactively check for an updated SW on registration. The browser
+        // also checks ~hourly on its own, but this gives us a faster path
+        // the first time a user opens the page after a deploy.
+        try { reg.update() } catch (_) {}
+      })
+      .catch(() => {})
   })
 }
 
