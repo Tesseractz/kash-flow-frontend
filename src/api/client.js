@@ -139,6 +139,12 @@ export const PushAPI = {
   unsubscribe: (endpoint) =>
     api.post("/push/unsubscribe", { endpoint }).then((r) => r.data),
   test: () => api.post("/push/test").then((r) => r.data),
+  fcmStatus: () => api.get("/push/fcm/status").then((r) => r.data),
+  fcmSubscribe: (data) =>
+    api.post("/push/fcm/subscribe", data).then((r) => r.data),
+  fcmUnsubscribe: (token) =>
+    api.post("/push/fcm/unsubscribe", { token }).then((r) => r.data),
+  fcmTest: () => api.post("/push/fcm/test").then((r) => r.data),
 };
 
 // Customers API

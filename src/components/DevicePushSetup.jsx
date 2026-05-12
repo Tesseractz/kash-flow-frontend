@@ -5,6 +5,8 @@ import { BellRing, Smartphone } from 'lucide-react'
 import { Button } from './ui/Button'
 import { PushAPI, PrivacyAPI } from '../api/client'
 import { enrollPushNotifications, isPushSupported } from '../lib/push'
+import { enrollNativePush, isNativePushSupported } from '../lib/nativePush'
+import { isCapacitorNative } from '../lib/platform'
 
 function readPermission() {
   try {
@@ -15,13 +17,16 @@ function readPermission() {
 }
 
 /**
- * Lets the user grant OS (browser) notification permission and register the device for Web Push.
- * Not gated on privacy "Push" toggle — successful enroll also sets push_notifications_enabled in privacy settings.
+ * Lets the user grant OS notification permission and register the device.
+ * Web browsers go through Web Push (VAPID); Capacitor mobile apps go through
+ * @capacitor/push-notifications (FCM on Android, APNs on iOS).
+ * Successful enroll also flips push_notifications_enabled in privacy settings.
  */
 export default function DevicePushSetup() {
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
   const [permission, setPermission] = useState(readPermission)
+  const [nativeRegistered, setNativeRegistered] = useState(false)
 
   useEffect(() => {
     const sync = () => setPermission(readPermission())
@@ -33,36 +38,51 @@ export default function DevicePushSetup() {
     }
   }, [])
 
-  const canUsePush = typeof window !== 'undefined' && isPushSupported()
+  const onNative = isCapacitorNative()
+  const canUseWeb = typeof window !== 'undefined' && isPushSupported()
+  const canUseNative = onNative && isNativePushSupported()
+  const canEnroll = canUseWeb || canUseNative
+
+  const effectivePermission = onNative
+    ? (nativeRegistered ? 'granted' : 'default')
+    : permission
 
   const label =
-    permission === 'granted'
+    effectivePermission === 'granted'
       ? 'Registered on this device'
-      : permission === 'denied'
+      : effectivePermission === 'denied'
         ? 'Notifications blocked'
         : 'Allow system notifications'
 
   const handleEnable = useCallback(async () => {
-    if (!canUsePush) {
-      toast.error('Push notifications are not supported on this device/browser')
+    if (!canEnroll) {
+      const msg = onNative
+        ? 'Native push isn\'t set up on this build. See mobile/MOBILE_PUSH.md.'
+        : 'Push notifications are not supported on this device/browser'
+      toast.error(msg)
       return
     }
-    if (permission === 'denied') {
+    if (!onNative && permission === 'denied') {
       toast.error('Notifications are blocked. Enable them in your browser or OS settings for this site.')
       return
     }
     setBusy(true)
     try {
-      await enrollPushNotifications()
+      if (onNative) {
+        await enrollNativePush()
+        setNativeRegistered(true)
+      } else {
+        await enrollPushNotifications()
+      }
       await PrivacyAPI.updateSettings({ push_notifications_enabled: true })
       await qc.invalidateQueries({ queryKey: ['privacy-settings'] })
-      setPermission(readPermission())
+      if (!onNative) setPermission(readPermission())
       try {
-        const result = await PushAPI.test()
-        if (result?.sent > 0) {
+        const result = onNative ? await PushAPI.fcmTest() : await PushAPI.test()
+        if ((result?.sent ?? 0) > 0) {
           toast.success('Check for a system notification — KashPoint sent a test.')
         } else {
-          toast.success('This device is registered. Open the app on another device or check notification settings.')
+          toast.success('This device is registered.')
         }
       } catch (_) {
         toast.success('Device registered for notifications.')
@@ -70,17 +90,18 @@ export default function DevicePushSetup() {
     } catch (e) {
       const msg = e?.response?.data?.detail || e?.message || 'Failed to enable notifications'
       toast.error(typeof msg === 'string' ? msg : 'Failed to enable notifications')
-      setPermission(readPermission())
+      if (!onNative) setPermission(readPermission())
     } finally {
       setBusy(false)
     }
-  }, [canUsePush, permission, qc])
+  }, [canEnroll, onNative, permission, qc])
 
-  if (!canUsePush) {
+  if (!canEnroll) {
     return (
       <div className="mt-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-xs text-slate-600 dark:text-slate-400">
-        System notifications are not available in this browser. Use a recent Chrome, Edge, or Firefox on desktop or
-        Android, and ensure the app is served over HTTPS (or localhost for development).
+        {onNative
+          ? "Native push isn't wired into this mobile build yet. See mobile/MOBILE_PUSH.md to enable."
+          : 'System notifications are not available in this browser. Use a recent Chrome, Edge, or Firefox on desktop or Android, and ensure the app is served over HTTPS (or localhost for development).'}
       </div>
     )
   }
@@ -104,8 +125,8 @@ export default function DevicePushSetup() {
             <Button
               size="sm"
               onClick={handleEnable}
-              disabled={busy || permission === 'denied'}
-              variant={permission === 'granted' ? 'secondary' : 'primary'}
+              disabled={busy || effectivePermission === 'denied'}
+              variant={effectivePermission === 'granted' ? 'secondary' : 'primary'}
             >
               {busy ? 'Working…' : label}
             </Button>
