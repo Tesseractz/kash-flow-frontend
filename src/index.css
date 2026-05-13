@@ -30,13 +30,69 @@ html {
 }
 
 body {
-  @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-900 dark:text-slate-100;
+  @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-100;
+  /* Inter handles small sizes well; opt into its OpenType features for
+     proper tabular numerals on prices/amounts (via the .tabular-nums util). */
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   /* Padding for notched devices when in standalone/capacitor */
   padding-top: var(--sat);
   padding-bottom: var(--sab);
   padding-left: var(--sal);
   padding-right: var(--sar);
+}
+
+/* Reusable display-font heading style. Apply with .heading or via Tailwind:
+   <h1 className="font-display tracking-tight"> */
+h1, h2, h3 {
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Cleaner scrollbar across Webkit, Firefox already minimal. Subtle, theme-aware. */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.35);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139 / 0.55);
+  background-clip: padding-box;
+}
+.dark *::-webkit-scrollbar-thumb {
+  background: rgb(71 85 105 / 0.45);
+  background-clip: padding-box;
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139 / 0.65);
+  background-clip: padding-box;
+}
+
+/* Selection: brand-tinted so it feels intentional. */
+::selection {
+  background: rgb(37 99 235 / 0.22);
+  color: inherit;
+}
+
+/* Respect reduced-motion users — disable our custom animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Utility for mobile: ensure tap target is at least 44px (use on icon buttons etc.) */

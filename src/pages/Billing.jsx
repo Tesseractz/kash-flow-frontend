@@ -5,9 +5,10 @@ import { Button } from '../components/ui/Button'
 import { Card, CardContent } from '../components/ui/Card'
 import { BillingAPI, PlanAPI } from '../api/client'
 import toast from 'react-hot-toast'
-import { Check, X, Zap, Package, Users, FileText, Bell, Calendar, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
+import { Check, X, Zap, Package, Users, FileText, Bell, Calendar, AlertTriangle, Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { openExternalUrl } from '../lib/platform'
+import { Badge } from '../components/ui/Badge'
 
 const plan = {
   name: 'Pro',
@@ -301,57 +302,49 @@ export default function Billing() {
   const getStatusBadge = () => {
     if (syncing) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Verifying payment...
-        </span>
+        <Badge tone="info" icon={(props) => <Loader2 {...props} className="animate-spin" />}>
+          Verifying payment…
+        </Badge>
       )
     }
     if (isTrialing) {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
-          <Calendar className="w-4 h-4" />
+        <Badge tone="warning" icon={Calendar} dot>
           Trial: {trialDaysLeft} days left
-        </span>
+        </Badge>
       )
     }
     if (status === 'active') {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
-          <Check className="w-4 h-4" />
+        <Badge tone="success" icon={Check} dot>
           Active
-        </span>
+        </Badge>
       )
     }
     if (status === 'past_due') {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
-          <AlertTriangle className="w-4 h-4" />
-          Payment Failed
-        </span>
+        <Badge tone="danger" icon={AlertTriangle} dot>
+          Payment failed
+        </Badge>
       )
     }
     if (status === 'canceled') {
-      return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-          Canceled
-        </span>
-      )
+      return <Badge tone="neutral" dot>Canceled</Badge>
     }
-    return (
-      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-        No Active Plan
-      </span>
-    )
+    return <Badge tone="neutral" dot>No active plan</Badge>
   }
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 text-xs font-medium ring-1 ring-brand-200/60 dark:ring-brand-900/40 mb-3">
+          <Sparkles className="w-3.5 h-3.5" />
+          Pro plan
+        </div>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
           Billing
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 sm:mt-2">
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm sm:text-base">
           One plan. Full access. Start with a 30-day free trial.
         </p>
       </div>
@@ -589,23 +582,24 @@ export default function Billing() {
       )}
 
       <div className="mt-8 max-w-2xl mx-auto">
-        <Card className="relative border-blue-600 dark:border-blue-500 border-2 shadow-lg shadow-blue-600/10">
-          {(currentPlan === 'pro') && (
-            <div className="absolute -top-3 right-4">
-              <span className="bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                Current
-              </span>
+        <Card className="relative overflow-hidden border-brand-200 dark:border-brand-900/50 shadow-soft-xl">
+          {/* Hero gradient accent */}
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-brand-gradient" aria-hidden />
+          <div className="pointer-events-none absolute -top-32 -right-32 w-72 h-72 rounded-full bg-brand-100/60 dark:bg-brand-900/20 blur-3xl" aria-hidden />
+
+          {currentPlan === 'pro' && (
+            <div className="absolute top-4 right-4 z-10">
+              <Badge tone="success" icon={Check} size="md">Current</Badge>
             </div>
           )}
-          <CardContent className="p-4 sm:p-6">
+
+          <CardContent className="relative p-5 sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div
-                  className={`w-12 h-12 ${plan.iconBg} rounded-xl flex items-center justify-center mb-4`}
-                >
-                  <plan.icon className={`w-6 h-6 ${plan.iconColor}`} />
+                <div className="w-12 h-12 bg-brand-gradient rounded-2xl flex items-center justify-center mb-4 shadow-brand">
+                  <plan.icon className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                <h3 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {plan.name}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -613,21 +607,21 @@ export default function Billing() {
                 </p>
               </div>
               <div className="text-right">
-                <div className="mt-1">
-                  <span className="text-4xl font-bold text-slate-800 dark:text-white">
+                <div className="flex items-baseline justify-end gap-0.5">
+                  <span className="font-display text-4xl sm:text-5xl font-bold tabular-nums text-slate-900 dark:text-white">
                     {plan.price}
                   </span>
-                  <span className="text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-500 dark:text-slate-400 text-sm">
                     {plan.period}
                   </span>
                 </div>
-                <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
+                <p className="text-xs text-accent-600 dark:text-accent-400 font-medium mt-2">
                   30-day free trial
                 </p>
               </div>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-6">
               {(currentPlan === 'pro' && isActive) ? (
                 <Button variant="secondary" className="w-full" disabled>
                   {isTrialing ? 'Current plan: Pro (trial)' : 'Current plan: Pro'}
@@ -636,6 +630,7 @@ export default function Billing() {
                 <Button
                   variant="primary"
                   className="w-full"
+                  size="lg"
                   onClick={() => upgrade(plan.planId)}
                   disabled={loading}
                 >
@@ -644,17 +639,19 @@ export default function Billing() {
               )}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                Included when you subscribe to Pro:
+            <div className="mt-7 pt-6 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                Included
               </p>
-              <ul className="space-y-2.5">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
                 {plan.features.map((feature, idx) => (
                   <li
                     key={idx}
-                    className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400"
+                    className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300"
                   >
-                    <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span className="flex-shrink-0 mt-0.5 w-4 h-4 rounded-full bg-accent-100 dark:bg-accent-950/60 flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-accent-700 dark:text-accent-300" />
+                    </span>
                     <span>{feature.text}</span>
                   </li>
                 ))}

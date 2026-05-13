@@ -583,32 +583,32 @@ export default function Sell() {
             <CardHeader className="pb-3 flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4">
               <div className="flex flex-col gap-3">
                 {/* Mode Toggle */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800">
                     <button
                       onClick={() => switchMode("sale")}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out-expo ${
                         mode === "sale"
-                          ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                          ? "bg-white dark:bg-slate-900 text-brand-700 dark:text-brand-300 shadow-soft"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                       }`}
                     >
-                      <ShoppingCart size={16} />
+                      <ShoppingCart size={15} />
                       <span className="hidden sm:inline">Sale</span>
                     </button>
                     <button
                       onClick={() => switchMode("return")}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ease-out-expo ${
                         mode === "return"
-                          ? "bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm"
-                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                          ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-soft"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                       }`}
                     >
-                      <RotateCcw size={16} />
+                      <RotateCcw size={15} />
                       <span className="hidden sm:inline">Return</span>
                     </button>
                   </div>
-                  <div>
+                  <div className="text-right">
                     <CardTitle className={`text-base sm:text-lg ${mode === "return" ? "text-amber-600 dark:text-amber-400" : ""}`}>
                       {mode === "sale" ? t("sell.select_product") : "Select Product to Return"}
                     </CardTitle>
@@ -648,13 +648,13 @@ export default function Sell() {
                 )}
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     placeholder={t("products.search_placeholder")}
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm sm:text-base text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                    className="w-full pl-10 pr-4 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 focus:shadow-focus-ring outline-none transition-all duration-200 ease-out-expo"
                   />
                 </div>
 
@@ -689,35 +689,36 @@ export default function Sell() {
                           key={p.id}
                           onClick={() => addToCart(p)}
                           disabled={p.quantity === 0}
-                          className={`relative flex flex-col aspect-square rounded-xl border-2 text-left transition-all duration-200 overflow-hidden active:scale-[0.98] ${
+                          className={`group relative flex flex-col aspect-square rounded-2xl border text-left transition-all duration-200 ease-out-expo overflow-hidden active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 ${
                             inCart > 0
-                              ? "border-blue-600 ring-2 ring-blue-600/20 shadow-lg"
+                              ? "border-brand-600 bg-brand-50/30 dark:bg-brand-950/20 shadow-brand"
                               : p.quantity === 0
-                              ? "border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed"
-                              : "border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md bg-white dark:bg-slate-800"
+                              ? "border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed bg-white dark:bg-slate-900"
+                              : "border-slate-200/80 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700 hover:shadow-soft-lg hover:-translate-y-0.5 bg-white dark:bg-slate-900"
                           }`}
                         >
                           {/* Product Image */}
-                          <div className="flex-1 bg-slate-100 dark:bg-slate-700 flex items-center justify-center min-h-0 overflow-hidden">
+                          <div className="flex-1 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center min-h-0 overflow-hidden">
                             {p.image_url ? (
                               <img
                                 src={p.image_url}
                                 alt={p.name}
-                                className="w-full h-full object-contain"
+                                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                loading="lazy"
                               />
                             ) : (
-                              <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300 dark:text-slate-600" />
+                              <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300 dark:text-slate-700" />
                             )}
                           </div>
 
                           {/* Product Info - Horizontal Layout */}
-                          <div className="px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between gap-2 flex-shrink-0 border-t border-slate-200 dark:border-slate-700">
+                          <div className="px-2.5 sm:px-3 py-2 flex items-center justify-between gap-2 flex-shrink-0 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-white truncate">
+                              <p className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white truncate leading-tight">
                                 {p.name}
                               </p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
+                                <p className="text-sm font-bold tabular-nums text-brand-600 dark:text-brand-400">
                                   R{Number(p.price).toFixed(0)}
                                 </p>
                                 {p.sku && (
@@ -728,12 +729,12 @@ export default function Sell() {
                               </div>
                             </div>
                             <span
-                              className={`text-xs sm:text-sm px-2 py-1 rounded-full font-medium flex-shrink-0 ${
+                              className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ring-1 ring-inset flex-shrink-0 tabular-nums ${
                                 p.quantity === 0
-                                  ? "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400"
+                                  ? "bg-red-50 ring-red-200/60 text-red-700 dark:bg-red-950/30 dark:ring-red-900/40 dark:text-red-300"
                                   : p.quantity <= 5
-                                  ? "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400"
-                                  : "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400"
+                                  ? "bg-amber-50 ring-amber-200/60 text-amber-700 dark:bg-amber-950/30 dark:ring-amber-900/40 dark:text-amber-300"
+                                  : "bg-accent-50 ring-accent-200/60 text-accent-700 dark:bg-accent-950/30 dark:ring-accent-900/40 dark:text-accent-300"
                               }`}
                             >
                               {p.quantity === 0 ? "Out" : p.quantity}
@@ -742,7 +743,7 @@ export default function Sell() {
 
                           {/* In cart indicator */}
                           {inCart > 0 && (
-                            <div className="absolute top-1 right-1 sm:top-2 sm:right-2 w-6 h-6 sm:w-7 sm:h-7 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            <div className="absolute top-2 right-2 min-w-[24px] h-6 px-1.5 bg-brand-600 rounded-full flex items-center justify-center text-white text-xs font-bold tabular-nums shadow-brand animate-scale-in">
                               {inCart}
                             </div>
                           )}
@@ -1036,15 +1037,25 @@ export default function Sell() {
 
   function renderCartPanel() {
     if (cart.length === 0) {
+      const isReturn = mode === "return";
+      const Icon = isReturn ? RotateCcw : ShoppingCart;
       return (
-        <div className={`h-full flex flex-col items-center justify-center py-12 ${mode === "return" ? "text-amber-400 dark:text-amber-500" : "text-slate-400 dark:text-slate-500"}`}>
-          {mode === "return" ? (
-            <RotateCcw className="w-16 h-16 mb-4 opacity-30" />
-          ) : (
-            <ShoppingCart className="w-16 h-16 mb-4 opacity-30" />
-          )}
-          <p className="text-lg font-medium">{mode === "return" ? "No items to return" : "Cart is empty"}</p>
-          <p className="text-sm mt-1">{mode === "return" ? "Tap products to add to return" : "Tap products to add"}</p>
+        <div className="h-full flex flex-col items-center justify-center py-12 text-center">
+          <div
+            className={`mb-4 rounded-3xl p-5 ring-1 ${
+              isReturn
+                ? "bg-amber-50 dark:bg-amber-950/40 ring-amber-100 dark:ring-amber-900/40"
+                : "bg-brand-50 dark:bg-brand-950/40 ring-brand-100 dark:ring-brand-900/40"
+            }`}
+          >
+            <Icon className={`w-7 h-7 ${isReturn ? "text-amber-600 dark:text-amber-400" : "text-brand-600 dark:text-brand-400"}`} />
+          </div>
+          <p className="font-display text-base font-semibold text-slate-800 dark:text-slate-100">
+            {isReturn ? "No items to return" : "Cart is empty"}
+          </p>
+          <p className="text-sm mt-1 text-slate-500 dark:text-slate-400">
+            {isReturn ? "Tap products to add to return" : "Tap products to add"}
+          </p>
         </div>
       );
     }

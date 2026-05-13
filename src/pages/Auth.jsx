@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
-import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
-import { Button } from "../components/ui/Button";
-import { Card, CardContent } from "../components/ui/Card";
-import toast from "react-hot-toast";
-import { Logo } from "../components/Logo";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
+import { supabase } from "../lib/supabase"
+import { useAuth } from "../context/AuthContext"
+import { useTheme } from "../context/ThemeContext"
+import { Button } from "../components/ui/Button"
+import { Card, CardContent } from "../components/ui/Card"
+import { Input } from "../components/ui/Input"
+import toast from "react-hot-toast"
+import { Logo } from "../components/Logo"
 import {
   Store,
   Mail,
@@ -18,7 +19,11 @@ import {
   ArrowLeft,
   CheckCircle,
   KeyRound,
-} from "lucide-react";
+  Sparkles,
+  ShieldCheck,
+  Smartphone,
+  TrendingUp,
+} from "lucide-react"
 
 // Auth modes
 const MODE = {
@@ -28,675 +33,502 @@ const MODE = {
   RESET_PASSWORD: "reset",
   EMAIL_CONFIRMATION_SENT: "email_sent",
   PASSWORD_RESET_SENT: "reset_sent",
-};
+}
 
 export default function AuthPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [storeName, setStoreName] = useState("");
-  const [mode, setMode] = useState(MODE.SIGN_IN);
-  const [loading, setLoading] = useState(false);
-  
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [storeName, setStoreName] = useState("")
+  const [mode, setMode] = useState(MODE.SIGN_IN)
+  const [loading, setLoading] = useState(false)
+
   // Privacy consents
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [privacyAccepted, setPrivacyAccepted] = useState(false)
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
 
-  const { t } = useTranslation();
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const { t } = useTranslation()
+  const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const { theme, toggleTheme } = useTheme()
 
-  const from = location.state?.from?.pathname || "/";
+  const from = location.state?.from?.pathname || "/"
 
-  // Handle auth callbacks (email confirmation, password reset)
   useEffect(() => {
     const handleAuthCallback = async () => {
-      // Check for password reset flow
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get("access_token");
-      const type = hashParams.get("type");
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get("access_token")
+      const type = hashParams.get("type")
 
       if (type === "recovery" && accessToken) {
-        // User clicked password reset link
-        setMode(MODE.RESET_PASSWORD);
-        return;
+        setMode(MODE.RESET_PASSWORD)
+        return
       }
 
-      // Check for email confirmation
       if (type === "signup" || type === "email_change") {
-        toast.success("Email confirmed! You can now sign in.");
-        setMode(MODE.SIGN_IN);
-        // Clear the hash
-        window.history.replaceState(null, "", window.location.pathname);
+        toast.success("Email confirmed! You can now sign in.")
+        setMode(MODE.SIGN_IN)
+        window.history.replaceState(null, "", window.location.pathname)
       }
 
-      // Check for error in URL
-      const error = searchParams.get("error");
-      const errorDescription = searchParams.get("error_description");
-      if (error) {
-        toast.error(errorDescription || "Authentication error");
-      }
-    };
-
-    handleAuthCallback();
-  }, [searchParams]);
+      const error = searchParams.get("error")
+      const errorDescription = searchParams.get("error_description")
+      if (error) toast.error(errorDescription || "Authentication error")
+    }
+    handleAuthCallback()
+  }, [searchParams])
 
   useEffect(() => {
     if (isAuthenticated && mode !== MODE.RESET_PASSWORD) {
-      navigate(from, { replace: true });
+      navigate(from, { replace: true })
     }
-  }, [isAuthenticated, navigate, from, mode]);
+  }, [isAuthenticated, navigate, from, mode])
 
   const validateForm = () => {
     if (mode === MODE.FORGOT_PASSWORD) {
-      if (!email) {
-        toast.error("Please enter your email");
-        return false;
-      }
-      return true;
+      if (!email) { toast.error("Please enter your email"); return false }
+      return true
     }
-
     if (mode === MODE.RESET_PASSWORD) {
-      if (!password || password.length < 6) {
-        toast.error("Password must be at least 6 characters");
-        return false;
-      }
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match");
-        return false;
-      }
-      return true;
+      if (!password || password.length < 6) { toast.error("Password must be at least 6 characters"); return false }
+      if (password !== confirmPassword) { toast.error("Passwords do not match"); return false }
+      return true
     }
-
-    if (!email || !password) {
-      toast.error("Email and password are required");
-      return false;
-    }
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return false;
-    }
+    if (!email || !password) { toast.error("Email and password are required"); return false }
+    if (password.length < 6) { toast.error("Password must be at least 6 characters"); return false }
     if (mode === MODE.SIGN_UP) {
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match");
-        return false;
-      }
-      if (!storeName.trim()) {
-        toast.error("Store name is required");
-        return false;
-      }
-      if (!termsAccepted) {
-        toast.error("You must accept the Terms of Service");
-        return false;
-      }
-      if (!privacyAccepted) {
-        toast.error("You must accept the Privacy Policy");
-        return false;
-      }
+      if (password !== confirmPassword) { toast.error("Passwords do not match"); return false }
+      if (!storeName.trim()) { toast.error("Store name is required"); return false }
+      if (!termsAccepted) { toast.error("You must accept the Terms of Service"); return false }
+      if (!privacyAccepted) { toast.error("You must accept the Privacy Policy"); return false }
     }
-    return true;
-  };
+    return true
+  }
 
   const handleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    toast.success("Welcome back!");
-    navigate(from, { replace: true });
-  };
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    toast.success("Welcome back!")
+    navigate(from, { replace: true })
+  }
 
   const handleSignUp = async () => {
-        const { data, error } = await supabase.auth.signUp({ 
-          email, 
-          password,
-          options: {
-            data: {
-          store_name: storeName.trim(),
-        },
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: {
+        data: { store_name: storeName.trim() },
         emailRedirectTo: `${window.location.origin}/auth`,
       },
-    });
-    if (error) throw error;
-
-    // Check if email confirmation is required
-        if (data.user && !data.session) {
-      setMode(MODE.EMAIL_CONFIRMATION_SENT);
-        } else if (data.session) {
-      toast.success("Account created successfully!");
-      navigate("/");
-        }
-  };
+    })
+    if (error) throw error
+    if (data.user && !data.session) {
+      setMode(MODE.EMAIL_CONFIRMATION_SENT)
+    } else if (data.session) {
+      toast.success("Account created successfully!")
+      navigate("/")
+    }
+  }
 
   const handleForgotPassword = async () => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth`,
-    });
-    if (error) throw error;
-    setMode(MODE.PASSWORD_RESET_SENT);
-  };
+    })
+    if (error) throw error
+    setMode(MODE.PASSWORD_RESET_SENT)
+  }
 
   const handleResetPassword = async () => {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw error;
-    toast.success("Password updated successfully!");
-    // Clear the hash and redirect to sign in
-    window.history.replaceState(null, "", window.location.pathname);
-    setMode(MODE.SIGN_IN);
-    setPassword("");
-    setConfirmPassword("");
-  };
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+    toast.success("Password updated successfully!")
+    window.history.replaceState(null, "", window.location.pathname)
+    setMode(MODE.SIGN_IN)
+    setPassword("")
+    setConfirmPassword("")
+  }
 
   const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setLoading(true);
+    e.preventDefault()
+    if (!validateForm()) return
+    setLoading(true)
     try {
       switch (mode) {
-        case MODE.SIGN_IN:
-          await handleSignIn();
-          break;
-        case MODE.SIGN_UP:
-          await handleSignUp();
-          break;
-        case MODE.FORGOT_PASSWORD:
-          await handleForgotPassword();
-          break;
-        case MODE.RESET_PASSWORD:
-          await handleResetPassword();
-          break;
-        default:
-          break;
+        case MODE.SIGN_IN: await handleSignIn(); break
+        case MODE.SIGN_UP: await handleSignUp(); break
+        case MODE.FORGOT_PASSWORD: await handleForgotPassword(); break
+        case MODE.RESET_PASSWORD: await handleResetPassword(); break
+        default: break
       }
     } catch (e) {
-      toast.error(e.message || "Authentication failed");
+      toast.error(e.message || "Authentication failed")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleClearSession = async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
-  };
-
-  const { theme, toggleTheme } = useTheme();
-
-  // Success states (email sent screens)
-  if (mode === MODE.EMAIL_CONFIRMATION_SENT) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative">
-        <AuthTopButtons theme={theme} toggleTheme={toggleTheme} />
-        <div className="w-full max-w-md">
-          <AuthHeader />
-          <Card>
-            <CardContent className="p-4 sm:p-8 text-center">
-              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
-                {t("auth.check_email")}
-              </h2>
-              <p className="text-slate-600 dark:text-slate-400 mb-6">
-                {t("auth.email_sent")}{" "}
-                <strong className="text-slate-800 dark:text-white">
-                  {email}
-                </strong>
-                . {t("auth.click_to_activate")}
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setMode(MODE.SIGN_IN);
-                  setEmail("");
-                  setPassword("");
-                }}
-                className="w-full"
-              >
-                <ArrowLeft size={18} />
-                {t("auth.back_to_signin")}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    await supabase.auth.signOut()
+    window.location.reload()
   }
 
-  if (mode === MODE.PASSWORD_RESET_SENT) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative">
-        <AuthTopButtons theme={theme} toggleTheme={toggleTheme} />
-        <div className="w-full max-w-md">
-          <AuthHeader />
-          <Card>
-            <CardContent className="p-4 sm:p-8 text-center">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <KeyRound className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
-                {t("auth.check_email")}
-              </h2>
-              <p className="text-slate-600 dark:text-slate-400 mb-6">
-                {t("auth.reset_sent")}{" "}
-                <strong className="text-slate-800 dark:text-white">
-                  {email}
-                </strong>
-                . {t("auth.click_to_reset")}
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setMode(MODE.SIGN_IN);
-                  setEmail("");
-                }}
-                className="w-full"
-              >
-                <ArrowLeft size={18} />
-                {t("auth.back_to_signin")}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Reset password form
-  if (mode === MODE.RESET_PASSWORD) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative">
-        <AuthTopButtons theme={theme} toggleTheme={toggleTheme} />
-        <div className="w-full max-w-md">
-          <AuthHeader />
-          <Card>
-            <CardContent className="p-4 sm:p-8">
-              <form onSubmit={onSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    {t("auth.new_password")}
-                  </label>
-                  <div className="relative">
-                    <Lock
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
-                    />
-                    <input
-                      placeholder={t("auth.new_password")}
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="new-password"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    {t("auth.confirm_new_password")}
-                  </label>
-                  <div className="relative">
-                    <Lock
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
-                    />
-                    <input
-                      placeholder={t("auth.confirm_new_password")}
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      autoComplete="new-password"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? (
-                    t("loading")
-                  ) : (
-                    <>
-                      {t("auth.update_password")}
-                      <CheckCircle size={18} />
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Forgot password form
-  if (mode === MODE.FORGOT_PASSWORD) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative">
-        <AuthTopButtons theme={theme} toggleTheme={toggleTheme} />
-        <div className="w-full max-w-md">
-          <AuthHeader />
-          <Card>
-            <CardContent className="p-4 sm:p-8">
-              <form onSubmit={onSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    {t("auth.email")}
-                  </label>
-                  <div className="relative">
-                    <Mail
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
-                    />
-                    <input
-                      placeholder="you@example.com"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? (
-                    t("loading")
-                  ) : (
-                    <>
-                      {t("auth.send_reset_link")}
-                      <ArrowRight size={18} />
-                    </>
-                  )}
-                </Button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <button
-                  type="button"
-                  onClick={() => setMode(MODE.SIGN_IN)}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium inline-flex items-center gap-1"
-                >
-                  <ArrowLeft size={16} />
-                  {t("auth.back_to_signin")}
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Main sign in / sign up form
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      <AuthTopButtons theme={theme} toggleTheme={toggleTheme} />
-      
-      <div className="w-full max-w-md">
-        <AuthHeader
-          subtitle={
-            mode === MODE.SIGN_UP
-              ? t("auth.create_account")
-              : t("auth.welcome_back")
-          }
-        />
+    <div className="relative min-h-screen flex">
+      <ThemeToggleButton theme={theme} toggleTheme={toggleTheme} />
 
-        <Card>
-          <CardContent className="p-4 sm:p-8">
-            <form onSubmit={onSubmit} className="space-y-5">
-              {mode === MODE.SIGN_UP && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    {t("auth.store_name")}
-                  </label>
-                  <div className="relative">
-                    <Store
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
-                    />
-                    <input
-                      placeholder={t("auth.store_name")}
-                      type="text"
-                      value={storeName}
-                      onChange={(e) => setStoreName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                    />
-                  </div>
+      {/* Left brand panel — only visible on lg+ */}
+      <aside className="hidden lg:flex relative flex-1 items-center justify-center bg-brand-gradient text-white overflow-hidden">
+        {/* Decorative blurred orbs */}
+        <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-accent-400/30 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 opacity-20"
+             style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+
+        <div className="relative max-w-md px-12 py-16 z-10 animate-fade-in">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 ring-1 ring-white/20 px-3 py-1.5 backdrop-blur text-xs font-medium uppercase tracking-wider mb-8">
+            <Sparkles size={14} />
+            One plan. Full access.
+          </div>
+          <h2 className="font-display text-4xl xl:text-5xl font-bold leading-tight tracking-tight">
+            Sell anywhere.<br />
+            <span className="text-accent-200">Sync everywhere.</span>
+          </h2>
+          <p className="mt-5 text-blue-100/90 text-lg leading-relaxed">
+            KashPoint runs in your browser, on the desktop, and in your pocket — with offline mode for the moments your Wi-Fi gives up.
+          </p>
+          <ul className="mt-10 space-y-4">
+            {[
+              { icon: TrendingUp, label: "Live profit & sales reports", sub: "Know your numbers without a spreadsheet" },
+              { icon: Smartphone, label: "Works on phones, tablets, laptops", sub: "Same data, every device, in real time" },
+              { icon: ShieldCheck, label: "Built for trust", sub: "PCI-conscious billing through Paystack" },
+            ].map(({ icon: Icon, label, sub }) => (
+              <li key={label} className="flex items-start gap-3.5">
+                <div className="flex-shrink-0 mt-0.5 w-9 h-9 rounded-xl bg-white/15 backdrop-blur ring-1 ring-white/20 flex items-center justify-center">
+                  <Icon size={18} />
                 </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  {t("auth.email")}
-                </label>
-                <div className="relative">
-                  <Mail
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
+                <div>
+                  <p className="font-medium">{label}</p>
+                  <p className="text-sm text-blue-100/75">{sub}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </aside>
+
+      {/* Right form panel */}
+      <main className="flex-1 flex items-center justify-center px-4 py-10 sm:py-14 lg:px-12">
+        <div className="w-full max-w-md animate-slide-up">
+          <AuthHeader subtitle={subtitleFor(mode, t)} />
+          {mode === MODE.EMAIL_CONFIRMATION_SENT && (
+            <SuccessCard
+              icon={Mail}
+              tone="accent"
+              title={t("auth.check_email")}
+              body={<>
+                {t("auth.email_sent")}{" "}
+                <strong className="text-slate-900 dark:text-white">{email}</strong>
+                . {t("auth.click_to_activate")}
+              </>}
+              onBack={() => { setMode(MODE.SIGN_IN); setEmail(""); setPassword("") }}
+              backLabel={t("auth.back_to_signin")}
+            />
+          )}
+
+          {mode === MODE.PASSWORD_RESET_SENT && (
+            <SuccessCard
+              icon={KeyRound}
+              tone="brand"
+              title={t("auth.check_email")}
+              body={<>
+                {t("auth.reset_sent")}{" "}
+                <strong className="text-slate-900 dark:text-white">{email}</strong>
+                . {t("auth.click_to_reset")}
+              </>}
+              onBack={() => { setMode(MODE.SIGN_IN); setEmail("") }}
+              backLabel={t("auth.back_to_signin")}
+            />
+          )}
+
+          {mode === MODE.RESET_PASSWORD && (
+            <Card className="overflow-hidden">
+              <CardContent className="p-6 sm:p-8">
+                <form onSubmit={onSubmit} className="space-y-5">
+                  <Input
+                    label={t("auth.new_password")}
+                    icon={Lock}
+                    type="password"
+                    placeholder={t("auth.new_password")}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
                   />
-                  <input
-                    placeholder="you@example.com"
+                  <Input
+                    label={t("auth.confirm_new_password")}
+                    icon={Lock}
+                    type="password"
+                    placeholder={t("auth.confirm_new_password")}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <Button type="submit" disabled={loading} className="w-full" size="lg">
+                    {loading ? t("loading") : (<>{t("auth.update_password")}<CheckCircle size={18} /></>)}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {mode === MODE.FORGOT_PASSWORD && (
+            <Card>
+              <CardContent className="p-6 sm:p-8">
+                <form onSubmit={onSubmit} className="space-y-5">
+                  <Input
+                    label={t("auth.email")}
+                    icon={Mail}
                     type="email"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                   />
+                  <Button type="submit" disabled={loading} className="w-full" size="lg">
+                    {loading ? t("loading") : (<>{t("auth.send_reset_link")}<ArrowRight size={18} /></>)}
+                  </Button>
+                </form>
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setMode(MODE.SIGN_IN)}
+                    className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium inline-flex items-center gap-1"
+                  >
+                    <ArrowLeft size={16} />
+                    {t("auth.back_to_signin")}
+                  </button>
                 </div>
-              </div>
-              
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t("auth.password")}
-                </label>
-                  {mode === MODE.SIGN_IN && (
-                    <button
-                      type="button"
-                      onClick={() => setMode(MODE.FORGOT_PASSWORD)}
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                    >
-                      {t("auth.forgot_password")}
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
-                  <input
-                    placeholder={t("auth.password")}
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete={
-                      mode === MODE.SIGN_UP
-                        ? "new-password"
-                        : "current-password"
-                    }
-                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                  />
-                </div>
-              </div>
+              </CardContent>
+            </Card>
+          )}
 
-              {mode === MODE.SIGN_UP && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    {t("auth.confirm_password")}
-                  </label>
-                  <div className="relative">
-                    <Lock
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
+          {(mode === MODE.SIGN_IN || mode === MODE.SIGN_UP) && (
+            <Card>
+              <CardContent className="p-6 sm:p-8">
+                <form onSubmit={onSubmit} className="space-y-4">
+                  {mode === MODE.SIGN_UP && (
+                    <Input
+                      label={t("auth.store_name")}
+                      icon={Store}
+                      type="text"
+                      placeholder="My Shop"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
                     />
-                    <input
-                      placeholder={t("auth.confirm_password")}
+                  )}
+
+                  <Input
+                    label={t("auth.email")}
+                    icon={Mail}
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                  />
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                        {t("auth.password")}
+                      </label>
+                      {mode === MODE.SIGN_IN && (
+                        <button
+                          type="button"
+                          onClick={() => setMode(MODE.FORGOT_PASSWORD)}
+                          className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium"
+                        >
+                          {t("auth.forgot_password")}
+                        </button>
+                      )}
+                    </div>
+                    <Input
+                      icon={Lock}
                       type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={mode === MODE.SIGN_UP ? "new-password" : "current-password"}
+                    />
+                  </div>
+
+                  {mode === MODE.SIGN_UP && (
+                    <Input
+                      label={t("auth.confirm_password")}
+                      icon={Lock}
+                      type="password"
+                      placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       autoComplete="new-password"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                     />
-                  </div>
+                  )}
+
+                  {mode === MODE.SIGN_UP && (
+                    <div className="space-y-2.5 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <ConsentCheckbox id="terms" checked={termsAccepted} onChange={setTermsAccepted} required>
+                        I agree to the{" "}
+                        <a href="/terms" target="_blank" rel="noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline">Terms of Service</a>
+                      </ConsentCheckbox>
+                      <ConsentCheckbox id="privacy" checked={privacyAccepted} onChange={setPrivacyAccepted} required>
+                        I have read and accept the{" "}
+                        <a href="/privacy" target="_blank" rel="noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline">Privacy Policy</a>
+                      </ConsentCheckbox>
+                      <ConsentCheckbox id="marketing" checked={marketingOptIn} onChange={setMarketingOptIn}>
+                        Send me product updates and tips (optional)
+                      </ConsentCheckbox>
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={loading} className="w-full" size="lg">
+                    {loading ? t("loading") : (<>
+                      {mode === MODE.SIGN_UP ? t("auth.sign_up") : t("auth.sign_in")}
+                      <ArrowRight size={18} />
+                    </>)}
+                  </Button>
+                </form>
+
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode(mode === MODE.SIGN_UP ? MODE.SIGN_IN : MODE.SIGN_UP)
+                      setConfirmPassword("")
+                      setStoreName("")
+                    }}
+                    className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                  >
+                    {mode === MODE.SIGN_UP ? t("auth.have_account") : t("auth.no_account")}{" "}
+                    <span className="text-brand-600 dark:text-brand-400 font-medium">
+                      {mode === MODE.SIGN_UP ? t("auth.sign_in") : t("auth.sign_up")}
+                    </span>
+                  </button>
                 </div>
-              )}
+              </CardContent>
+            </Card>
+          )}
 
-              {/* Consent Checkboxes for Signup */}
-              {mode === MODE.SIGN_UP && (
-                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      checked={termsAccepted}
-                      onChange={(e) => setTermsAccepted(e.target.checked)}
-                      className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <label htmlFor="terms" className="text-sm text-slate-600 dark:text-slate-400">
-                      I agree to the{" "}
-                      <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
-                        Terms of Service
-                      </a>{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="privacy"
-                      checked={privacyAccepted}
-                      onChange={(e) => setPrivacyAccepted(e.target.checked)}
-                      className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <label htmlFor="privacy" className="text-sm text-slate-600 dark:text-slate-400">
-                      I have read and accept the{" "}
-                      <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
-                        Privacy Policy
-                      </a>{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="marketing"
-                      checked={marketingOptIn}
-                      onChange={(e) => setMarketingOptIn(e.target.checked)}
-                      className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <label htmlFor="marketing" className="text-sm text-slate-600 dark:text-slate-400">
-                      I want to receive updates about new features and special offers (optional)
-                    </label>
-                  </div>
-                </div>
-              )}
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={handleClearSession}
+              className="text-xs text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            >
+              {t("auth.session_trouble")}
+            </button>
+          </div>
 
-              <Button 
-                type="submit" 
-                disabled={loading}
-                className="w-full"
-                size="lg"
-              >
-                {loading ? (
-                  t("loading")
-                ) : (
-                  <>
-                    {mode === MODE.SIGN_UP
-                      ? t("auth.sign_up")
-                      : t("auth.sign_in")}
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <button 
-                type="button"
-                onClick={() => {
-                  setMode(mode === MODE.SIGN_UP ? MODE.SIGN_IN : MODE.SIGN_UP);
-                  setConfirmPassword("");
-                  setStoreName("");
-                }}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
-              >
-                {mode === MODE.SIGN_UP
-                  ? t("auth.have_account")
-                  : t("auth.no_account")}
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={handleClearSession}
-            className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            {t("auth.session_trouble")}
-          </button>
+          <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-8">
+            {t("auth.powered_by")}
+          </p>
         </div>
-
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-8">
-          {t("auth.powered_by")}
-        </p>
-      </div>
+      </main>
     </div>
-  );
+  )
 }
 
-// Helper components
+// Helpers -----------------------------------------------------------------
+
+function subtitleFor(mode, t) {
+  if (mode === MODE.SIGN_UP) return t("auth.create_account")
+  if (mode === MODE.SIGN_IN) return t("auth.welcome_back")
+  if (mode === MODE.FORGOT_PASSWORD) return "Reset your password"
+  if (mode === MODE.RESET_PASSWORD) return "Choose a new password"
+  return null
+}
+
 function AuthHeader({ subtitle }) {
   return (
     <div className="text-center mb-8">
-      <div className="flex justify-center mb-4">
-        <Logo size={56} showText={false} />
+      <div className="flex justify-center mb-5">
+        <Logo size={48} showText={false} />
       </div>
-      <h1 className="text-2xl sm:text-3xl font-bold">
-        <span className="text-emerald-600 dark:text-emerald-400">Kash</span>
+      <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
+        <span className="text-accent-600 dark:text-accent-400">Kash</span>
         <span className="text-amber-500 dark:text-amber-400">Point</span>
       </h1>
-      <p className="text-sm text-slate-500 dark:text-slate-400 tracking-wide uppercase mt-1">
+      <p className="text-[11px] text-slate-500 dark:text-slate-500 tracking-[0.18em] uppercase mt-1.5">
         Point of Sale
       </p>
       {subtitle && (
-        <p className="text-slate-500 dark:text-slate-400 mt-3">{subtitle}</p>
+        <p className="text-slate-600 dark:text-slate-400 mt-4 text-sm">{subtitle}</p>
       )}
     </div>
-  );
+  )
 }
 
-function AuthTopButtons({ theme, toggleTheme }) {
+function ThemeToggleButton({ theme, toggleTheme }) {
   return (
-    <div className="absolute top-4 right-4 flex items-center gap-2 safe-top">
+    <div className="absolute top-4 right-4 z-50 safe-top">
       <button
         onClick={toggleTheme}
-        className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors touch-target flex items-center justify-center"
+        className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur ring-1 ring-slate-200 dark:ring-slate-800 text-slate-600 dark:text-slate-300 transition-colors hover:bg-white dark:hover:bg-slate-900 touch-target flex items-center justify-center"
         aria-label="Toggle theme"
       >
-        {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+        {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </button>
     </div>
-  );
+  )
+}
+
+function ConsentCheckbox({ id, checked, onChange, required, children }) {
+  return (
+    <label htmlFor={id} className="flex items-start gap-3 cursor-pointer group">
+      <span className="relative mt-0.5 flex-shrink-0">
+        <input
+          type="checkbox"
+          id={id}
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer sr-only"
+        />
+        <span className={`block w-4 h-4 rounded border transition-all
+          border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800
+          peer-checked:bg-brand-600 peer-checked:border-brand-600
+          group-hover:border-slate-400 dark:group-hover:border-slate-500
+        `} />
+        <CheckCircle size={12} className="absolute inset-0 m-auto text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+      </span>
+      <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+        {children}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </span>
+    </label>
+  )
+}
+
+function SuccessCard({ icon: Icon, tone, title, body, onBack, backLabel }) {
+  const toneStyles = tone === "accent"
+    ? "bg-accent-50 text-accent-600 dark:bg-accent-950/50 dark:text-accent-300"
+    : "bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-300"
+  return (
+    <Card>
+      <CardContent className="p-8 text-center">
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 ring-1 ring-slate-200/60 dark:ring-slate-800 ${toneStyles}`}>
+          <Icon className="w-8 h-8" />
+        </div>
+        <h2 className="font-display text-xl font-semibold text-slate-900 dark:text-white mb-2 tracking-tight">
+          {title}
+        </h2>
+        <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm leading-relaxed">
+          {body}
+        </p>
+        <Button variant="outline" onClick={onBack} className="w-full">
+          <ArrowLeft size={16} />
+          {backLabel}
+        </Button>
+      </CardContent>
+    </Card>
+  )
 }

@@ -49,14 +49,17 @@ function NavLink({ to, icon: Icon, labelKey, onClick }) {
     <Link
       to={to}
       onClick={onClick}
+      aria-current={isActive ? "page" : undefined}
       className={clsx(
-        "flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200",
+        "group relative flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm",
+        "transition-all duration-200 ease-out-expo",
+        // Brand-tinted active state with a subtle left accent stripe; hover lift on idle items.
         isActive
-          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-          : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+          ? "bg-brand-600 text-white shadow-brand"
+          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60",
       )}
     >
-      <Icon size={20} />
+      <Icon size={18} className={clsx("flex-shrink-0", isActive ? "" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200")} />
       <span>{t(labelKey)}</span>
     </Link>
   );
@@ -70,10 +73,10 @@ function ThemeToggle({ compact = false }) {
     return (
       <button
         onClick={toggleTheme}
-        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 transition-colors"
+        className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         aria-label={theme === "dark" ? t("nav.light_mode") : t("nav.dark_mode")}
       >
-        {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+        {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </button>
     );
   }
@@ -81,10 +84,10 @@ function ThemeToggle({ compact = false }) {
   return (
     <button
       onClick={toggleTheme}
-      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
+      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all duration-200"
       aria-label={theme === "dark" ? t("nav.light_mode") : t("nav.dark_mode")}
     >
-      {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+      {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       <span>{theme === "dark" ? t("nav.light_mode") : t("nav.dark_mode")}</span>
     </button>
   );
@@ -116,27 +119,32 @@ function UserDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
-        <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+        <div className="w-8 h-8 bg-accent-gradient rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-soft ring-1 ring-white/20">
           {user?.email?.charAt(0).toUpperCase() || "U"}
         </div>
         <ChevronDown
           size={16}
           className={clsx(
-            "text-slate-500 transition-transform",
-            open && "rotate-180"
+            "text-slate-500 transition-transform duration-200",
+            open && "rotate-180",
           )}
         />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-            <p className="text-sm font-medium text-slate-800 dark:text-white truncate">
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-soft-xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-slide-down origin-top-right"
+        >
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
               {user?.email}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Store Owner
             </p>
           </div>
@@ -144,15 +152,15 @@ function UserDropdown() {
           <Link
             to="/profile"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+            className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
           >
-            <Settings size={16} />
+            <Settings size={16} className="text-slate-500 dark:text-slate-400" />
             {t("nav.profile", "Profile & Settings")}
           </Link>
 
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
           >
             <LogOut size={16} />
             {t("nav.sign_out")}
@@ -185,23 +193,24 @@ function Sidebar({ mobile, onClose }) {
   return (
     <aside
       className={clsx(
-        "flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700",
-        mobile ? "w-full h-full" : "w-64 min-h-screen"
+        "flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800",
+        mobile ? "w-full h-full" : "w-64 min-h-screen",
       )}
     >
-      <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+      <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <Link
             to="/"
-            className="flex items-center gap-2 rounded-lg hover:opacity-90 active:opacity-80 transition-opacity outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+            className="flex items-center gap-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 transition-opacity hover:opacity-90 active:opacity-80"
             onClick={mobile ? onClose : undefined}
           >
-            <Logo size={36} />
+            <Logo size={34} />
           </Link>
           {mobile && (
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300"
+              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+              aria-label="Close menu"
             >
               <X size={20} />
             </button>
@@ -209,18 +218,18 @@ function Sidebar({ mobile, onClose }) {
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {visibleNavItems.map((item) => (
-          <NavLink 
-            key={item.to} 
-            {...item} 
+          <NavLink
+            key={item.to}
+            {...item}
             onClick={mobile ? onClose : undefined}
           />
         ))}
 
         {/* Only show theme toggle in sidebar on desktop */}
         {!mobile && (
-          <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
             <ThemeToggle />
           </div>
         )}
@@ -276,10 +285,10 @@ function MobileSidebarFooter({ onClose }) {
 
 function DesktopHeader() {
   return (
-    <header className="hidden lg:flex h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 items-center justify-end gap-3">
+    <header className="hidden lg:flex h-16 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-6 items-center justify-end gap-2 sticky top-0 z-30">
       <NotificationsBell />
       <ThemeToggle compact />
-      <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
+      <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
       <UserDropdown />
     </header>
   );
@@ -289,22 +298,23 @@ function MobileHeader({ onMenuOpen }) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-40 px-4 flex items-center justify-between safe-top">
+    <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/85 dark:bg-slate-950/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-40 px-4 flex items-center justify-between safe-top">
       <Logo size={32} showText={false} />
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <NotificationsBell />
         <button
           onClick={toggleTheme}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 touch-target flex items-center justify-center"
+          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 touch-target flex items-center justify-center transition-colors"
           aria-label="Toggle theme"
         >
           {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         <button
           onClick={onMenuOpen}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 touch-target flex items-center justify-center"
+          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 touch-target flex items-center justify-center transition-colors"
+          aria-label="Open menu"
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
       </div>
     </header>
@@ -337,24 +347,24 @@ function MobileTabBar({ onMore }) {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 safe-bottom">
-      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-slate-200 dark:border-slate-700">
-        <div className="flex items-stretch justify-around px-2 py-2">
+      <div className="bg-white/85 dark:bg-slate-950/85 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-stretch justify-around px-2 py-2 gap-1">
           {tabs.map(({ to, icon: Icon, label }) => {
             const isActive = location.pathname === to;
             return (
               <Link
                 key={to}
                 to={to}
-                className={clsx(
-                  "flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 min-w-0 flex-1",
-                  "transition-colors touch-target",
-                  isActive
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-slate-600 dark:text-slate-300"
-                )}
                 aria-current={isActive ? "page" : undefined}
+                className={clsx(
+                  "relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 min-w-0 flex-1",
+                  "transition-all duration-200 ease-out-expo touch-target",
+                  isActive
+                    ? "text-brand-600 dark:text-brand-400 bg-brand-50/80 dark:bg-brand-950/40"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+                )}
               >
-                <Icon size={20} />
+                <Icon size={20} className={clsx(isActive && "drop-shadow-sm")} />
                 <span className="text-[11px] font-medium leading-none truncate max-w-full">
                   {label}
                 </span>
@@ -365,7 +375,7 @@ function MobileTabBar({ onMore }) {
           <button
             type="button"
             onClick={onMore}
-            className="flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 min-w-0 flex-1 transition-colors text-slate-600 dark:text-slate-300 touch-target"
+            className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 min-w-0 flex-1 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 touch-target"
             aria-label={t("nav.more", "More")}
           >
             <Menu size={20} />
@@ -399,25 +409,25 @@ export default function App() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 bg-mesh-light dark:bg-mesh-dark">
         <Outlet />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex overflow-x-hidden">
       <div className="hidden lg:block">
         <Sidebar />
       </div>
 
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
+        <div className="lg:hidden fixed inset-0 z-50 animate-fade-in">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="absolute left-0 top-0 bottom-0 w-72">
+          <div className="absolute left-0 top-0 bottom-0 w-72 animate-slide-up">
             <Sidebar mobile onClose={() => setMobileMenuOpen(false)} />
           </div>
         </div>
@@ -429,14 +439,14 @@ export default function App() {
 
         <main className="flex-1 flex flex-col p-0 mobile-main-offset mobile-bottom-offset overflow-x-hidden min-w-0">
           <PushNotificationBanner />
-          <div className="flex-1 p-3 sm:p-4 lg:p-8 w-full min-w-0">
+          <div className="flex-1 p-3 sm:p-5 lg:p-8 w-full min-w-0">
             <div className="max-w-7xl mx-auto w-full">
               <Outlet />
             </div>
           </div>
         </main>
       </div>
-      
+
       <MobileTabBar onMore={() => setMobileMenuOpen(true)} />
 
       {/* Cookie Consent Banner */}
