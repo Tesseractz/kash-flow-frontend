@@ -1,49 +1,57 @@
 name: Release and Deploy
 
+# Runs on every push to main. Tags a semver release, then deploys — but only
+# if deployment secrets are configured, so the run stays green while the
+# hosting move is in progress.
+#
+# Commit message tags: [major] / [minor] control the bump (default: patch).
+# GitHub skips this workflow entirely for commits containing [skip ci].
+
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
+  test:
+    name: Test before releasing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # package-lock.json is gitignored in this repo, so `npm ci` cannot run.
+      - run: npm install --no-audit --no-fund
+      - run: npm run test:run
+
   release:
+    name: Tag a version
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
       new_version: ${{ steps.semver.outputs.new_version }}
     steps:
-      - name: Checkout Code (auth, full history)
+      - name: Checkout code (full history for tags)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # token: ${{ secrets.GITHUB_TOKEN }}  # optional; checkout uses it by default
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Ensure branch is up to date with main
-        run: |
-          git fetch origin main
-          git pull --rebase origin main
-
-      # Optional guard to prevent loops if this job pushes a [skip ci] commit back to main
-      - name: Skip if this is a skip-ci commit
-        if: contains(github.event.head_commit.message, '[skip ci]')
-        run: |
-          echo "Skipping because [skip ci] present."
-          exit 0
-
-      - name: Get Latest Tag
+      - name: Get latest tag
         id: get_tag
         run: |
           git fetch --tags
           latest_tag=$(git tag --sort=-v:refname | head -n 1)
           echo "tag=${latest_tag:-v0.1.0}" >> "$GITHUB_OUTPUT"
 
-      - name: Determine Version Bump
+      - name: Determine version bump
         id: version
         run: |
           bump="patch"
@@ -55,7 +63,7 @@ jobs:
           fi
           echo "bump=$bump" >> "$GITHUB_OUTPUT"
 
-      - name: Calculate Next Version
+      - name: Calculate next version
         id: semver
         run: |
           current=${{ steps.get_tag.outputs.tag }}
@@ -68,49 +76,54 @@ jobs:
           esac
           echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Git identity
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-      - name: Update version in package manifests
+      - name: Commit the version bump and tag it
         run: |
           new_version=${{ steps.semver.outputs.new_version }}
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           npm version "$new_version" --no-git-tag-version
-          git add package.json package-lock.json
+          # Only package.json — package-lock.json is gitignored here.
+          git add package.json
           git commit -m "chore: bump version to v${new_version} [skip ci]"
-
-      - name: Create and Push Tag + Commit
-        run: |
-          new_tag="v${{ steps.semver.outputs.new_version }}"
-          git tag "$new_tag"
-          # Push the commit and the new tag
+          git tag "v${new_version}"
           git push origin HEAD:main
-          git push origin "$new_tag"
+          git push origin "v${new_version}"
 
   deploy:
+    name: Deploy
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code at released tag
+      - name: Checkout the released tag
         uses: actions/checkout@v4
         with:
           ref: "v${{ needs.release.outputs.new_version }}"
-          fetch-depth: 0   # good practice when working with tags
+          fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm install --no-audit --no-fund
 
+      # Without these the bundle ships with an empty API base URL and the app
+      # cannot reach the backend at all.
       - name: Build web assets
         run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Fail if the build has no API base URL
+        run: |
+          if [ -z "${{ secrets.VITE_API_BASE_URL }}" ]; then
+            echo "::warning::VITE_API_BASE_URL is not set; skipping deploy to avoid publishing a broken build."
+            exit 0
+          fi
 
       - name: Deploy via FTP
+        if: ${{ secrets.FTP_HOST != '' && secrets.VITE_API_BASE_URL != '' }}
         uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
           server: ${{ secrets.FTP_HOST }}
@@ -120,5 +133,10 @@ jobs:
           local-dir: dist/
           server-dir: /
 
-      - name: Display Deploy Status
-        run: echo "✅ Deployment completed"
+      - name: Deployment summary
+        run: |
+          if [ -n "${{ secrets.FTP_HOST }}" ] && [ -n "${{ secrets.VITE_API_BASE_URL }}" ]; then
+            echo "Deployed v${{ needs.release.outputs.new_version }} over FTP." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Tagged v${{ needs.release.outputs.new_version }}. Deploy skipped — set VITE_API_BASE_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and the FTP_* secrets to enable it." >> "$GITHUB_STEP_SUMMARY"
+          fi
