@@ -8,20 +8,38 @@ import './lib/i18n' // Initialize i18n for translations
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import App from './App'
-import Products from './pages/Products'
-import Sell from './pages/Sell'
-import Dashboard from './pages/Dashboard'
-import Transactions from './pages/Transactions'
-import AuthPage from './pages/Auth'
-import Billing from './pages/Billing'
-import Profile from './pages/Profile'
-import Users from './pages/Users'
-import Customers from './pages/Customers'
-import Expenses from './pages/Expenses'
-import PrivacySettings from './pages/PrivacySettings'
-import Terms from './pages/Terms'
-import Privacy from './pages/Privacy'
 import ProtectedRoute from './components/ProtectedRoute'
+
+// The till and the product list load with the app: a cashier must never wait
+// for a chunk to download mid-sale, and this is often a phone on mobile data.
+import Sell from './pages/Sell'
+import Products from './pages/Products'
+import AuthPage from './pages/Auth'
+
+// Everything else is opened occasionally, by an owner rather than a cashier,
+// so it is fetched on first visit instead of bloating the initial download.
+const Dashboard = React.lazy(() => import('./pages/Dashboard'))
+const Transactions = React.lazy(() => import('./pages/Transactions'))
+const Billing = React.lazy(() => import('./pages/Billing'))
+const Profile = React.lazy(() => import('./pages/Profile'))
+const Users = React.lazy(() => import('./pages/Users'))
+const Customers = React.lazy(() => import('./pages/Customers'))
+const Expenses = React.lazy(() => import('./pages/Expenses'))
+const PrivacySettings = React.lazy(() => import('./pages/PrivacySettings'))
+const Terms = React.lazy(() => import('./pages/Terms'))
+const Privacy = React.lazy(() => import('./pages/Privacy'))
+
+function PageLoading() {
+  return (
+    <div className="flex items-center justify-center py-24" role="status" aria-busy="true">
+      <div className="h-8 w-8 rounded-full border-2 border-slate-200 border-t-brand-600 animate-spin dark:border-slate-700 dark:border-t-brand-400" />
+      <span className="sr-only">Loading…</span>
+    </div>
+  )
+}
+
+/** Wrap a lazily-loaded page so it has somewhere to render while it arrives. */
+const page = (element) => <React.Suspense fallback={<PageLoading />}>{element}</React.Suspense>
 
 // Register service worker (required for Web Push on supported browsers).
 // `updateViaCache: 'none'` forces the browser to bypass HTTP cache when
@@ -66,7 +84,7 @@ const router = createBrowserRouter([
         path: "/dashboard",
         element: (
           <ProtectedRoute adminOnly>
-            <Dashboard />
+            {page(<Dashboard />)}
           </ProtectedRoute>
         ),
       },
@@ -82,7 +100,7 @@ const router = createBrowserRouter([
         path: "/users",
         element: (
           <ProtectedRoute adminOnly>
-            <Users />
+            {page(<Users />)}
           </ProtectedRoute>
         ),
       },
@@ -95,7 +113,7 @@ const router = createBrowserRouter([
         path: "/transactions",
         element: (
           <ProtectedRoute adminOnly>
-            <Transactions />
+            {page(<Transactions />)}
           </ProtectedRoute>
         ),
       },
@@ -107,7 +125,7 @@ const router = createBrowserRouter([
         path: "/billing",
         element: (
           <ProtectedRoute adminOnly>
-            <Billing />
+            {page(<Billing />)}
           </ProtectedRoute>
         ),
       },
@@ -115,7 +133,7 @@ const router = createBrowserRouter([
         path: "/profile",
         element: (
           <ProtectedRoute>
-            <Profile />
+            {page(<Profile />)}
           </ProtectedRoute>
         ),
       },
@@ -123,7 +141,7 @@ const router = createBrowserRouter([
         path: "/customers",
         element: (
           <ProtectedRoute adminOnly>
-            <Customers />
+            {page(<Customers />)}
           </ProtectedRoute>
         ),
       },
@@ -131,7 +149,7 @@ const router = createBrowserRouter([
         path: "/expenses",
         element: (
           <ProtectedRoute adminOnly>
-            <Expenses />
+            {page(<Expenses />)}
           </ProtectedRoute>
         ),
       },
@@ -139,17 +157,17 @@ const router = createBrowserRouter([
         path: "/privacy-settings",
         element: (
           <ProtectedRoute>
-            <PrivacySettings />
+            {page(<PrivacySettings />)}
           </ProtectedRoute>
         ),
       },
       {
         path: "/terms",
-        element: <Terms />,
+        element: page(<Terms />),
       },
       {
         path: "/privacy",
-        element: <Privacy />,
+        element: page(<Privacy />),
       },
     ],
   },
