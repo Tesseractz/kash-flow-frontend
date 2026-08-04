@@ -47,10 +47,10 @@ export async function ensurePushSubscription() {
   if (existing) return existing
 
   const { public_key } = await PushAPI.vapidPublicKey()
-  const appServerKey = urlBase64ToUint8Array(public_key)
+  const applicationServerKey = urlBase64ToUint8Array(public_key)
   return await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    appServerKey,
+    applicationServerKey,
   })
 }
 
