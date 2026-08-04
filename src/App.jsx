@@ -15,6 +15,8 @@ import {
   Users,
   Receipt,
   Shield,
+  LayoutDashboard,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useAuth } from "./context/AuthContext";
 import { useTheme } from "./context/ThemeContext";
@@ -24,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import { Logo, LogoIcon } from "./components/Logo";
 import NotificationsBell from "./components/NotificationsBell";
+import InfoStrip from "./components/InfoStrip";
 import PushNotificationBanner from "./components/PushNotificationBanner";
 import CookieConsent from "./components/CookieConsent";
 import { useQuery } from "@tanstack/react-query";
@@ -31,11 +34,12 @@ import { PlanAPI } from "./api/client";
 
 const navItems = [
   { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell", adminOnly: false },
+  { to: "/dashboard", icon: LayoutDashboard, labelKey: "nav.dashboard", adminOnly: true },
+  { to: "/transactions", icon: ArrowRightLeft, labelKey: "nav.transactions", adminOnly: true },
   { to: "/products", icon: Package, labelKey: "nav.products", adminOnly: false },
   { to: "/customers", icon: Users, labelKey: "nav.customers", adminOnly: true },
   { to: "/expenses", icon: Receipt, labelKey: "nav.expenses", adminOnly: true },
   { to: "/users", icon: User, labelKey: "nav.users", adminOnly: true },
-  { to: "/reports", icon: BarChart3, labelKey: "nav.reports", adminOnly: true },
   { to: "/billing", icon: CreditCard, labelKey: "nav.billing", adminOnly: true },
   { to: "/privacy-settings", icon: Shield, labelKey: "nav.privacy", adminOnly: false },
 ];
@@ -285,11 +289,14 @@ function MobileSidebarFooter({ onClose }) {
 
 function DesktopHeader() {
   return (
-    <header className="hidden lg:flex h-16 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-6 items-center justify-end gap-2 sticky top-0 z-30">
-      <NotificationsBell />
-      <ThemeToggle compact />
-      <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
-      <UserDropdown />
+    <header className="hidden lg:flex h-16 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-6 items-center justify-between gap-4 sticky top-0 z-30">
+      <InfoStrip />
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <NotificationsBell />
+        <ThemeToggle compact />
+        <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
+        <UserDropdown />
+      </div>
     </header>
   );
 }
@@ -300,6 +307,9 @@ function MobileHeader({ onMenuOpen }) {
   return (
     <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/85 dark:bg-slate-950/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 z-40 px-4 flex items-center justify-between safe-top">
       <Logo size={32} showText={false} />
+      <div className="hidden min-[400px]:flex flex-1 justify-center px-2 min-w-0">
+        <InfoStrip variant="mobile" />
+      </div>
       <div className="flex items-center gap-0.5">
         <NotificationsBell />
         <button
@@ -335,7 +345,7 @@ function MobileTabBar({ onMore }) {
   const tabs = [
     { to: "/sell", icon: ShoppingCart, label: t("nav.sell"), adminOnly: false },
     { to: "/products", icon: Package, label: t("nav.products"), adminOnly: false },
-    { to: "/reports", icon: BarChart3, label: t("nav.reports"), adminOnly: true },
+    { to: "/dashboard", icon: LayoutDashboard, label: t("nav.dashboard", "Dashboard"), adminOnly: true },
     { to: "/profile", icon: User, label: t("nav.profile", "Profile"), adminOnly: false },
   ]
     .filter((tab) => !tab.adminOnly || isAdmin)

@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import './index.css'
@@ -10,7 +10,8 @@ import { ThemeProvider } from './context/ThemeContext'
 import App from './App'
 import Products from './pages/Products'
 import Sell from './pages/Sell'
-import Reports from './pages/Reports'
+import Dashboard from './pages/Dashboard'
+import Transactions from './pages/Transactions'
 import AuthPage from './pages/Auth'
 import Billing from './pages/Billing'
 import Profile from './pages/Profile'
@@ -53,11 +54,19 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { 
+      {
         path: "/sell",
         element: (
           <ProtectedRoute>
             <Sell />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/dashboard",
+        element: (
+          <ProtectedRoute adminOnly>
+            <Dashboard />
           </ProtectedRoute>
         ),
       },
@@ -78,10 +87,15 @@ const router = createBrowserRouter([
         ),
       },
       {
+        // Reports merged into Dashboard — keep old links working.
         path: "/reports",
+        element: <Navigate to="/dashboard" replace />,
+      },
+      {
+        path: "/transactions",
         element: (
           <ProtectedRoute adminOnly>
-            <Reports />
+            <Transactions />
           </ProtectedRoute>
         ),
       },

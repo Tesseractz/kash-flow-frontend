@@ -21,6 +21,8 @@ const en = {
     
     // Navigation
     nav: {
+      dashboard: 'Dashboard',
+      transactions: 'Transactions',
       products: 'Products',
       sell: 'Sell',
       customers: 'Customers',
