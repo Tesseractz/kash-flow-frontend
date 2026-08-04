@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SalesAPI, ProfileAPI } from "../api/client";
 import { salesForDay, cashupSummary, drawerVariance, cashupText } from "../lib/cashup";
-import { openExternalUrl } from "../lib/platform";
+import { openExternalUrl, isCapacitorNative } from "../lib/platform";
 import { Button } from "./ui/Button";
 import { SkeletonText } from "./ui/Skeleton";
 import { X, Printer, Share2, Copy, Calculator } from "lucide-react";
@@ -147,9 +147,12 @@ export default function CashUpDialog({ date, onClose }) {
 
             {/* Actions */}
             <div className="flex gap-2 mt-4">
-              <Button variant="outline" className="flex-1" onClick={() => window.print()}>
-                <Printer size={15} /> Print
-              </Button>
+              {/* No window.print() in Android's WebView — see Sell.jsx. */}
+              {!isCapacitorNative() && (
+                <Button variant="outline" className="flex-1" onClick={() => window.print()}>
+                  <Printer size={15} /> Print
+                </Button>
+              )}
               <Button variant="outline" className="flex-1" onClick={handleCopy}>
                 <Copy size={15} /> Copy
               </Button>

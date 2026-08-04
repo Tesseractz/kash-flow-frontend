@@ -272,7 +272,7 @@ api.interceptors.response.use(
       const hint = !baseURL
         ? 'Set VITE_API_BASE_URL in Netlify (and redeploy) to your backend URL.'
         : noResponse
-          ? 'Backend may be down or CORS may be blocking. Allow origin https://kash-flow.netlify.app in your API.'
+          ? `Backend may be down or CORS may be blocking. Allow origin ${window.location.origin} in your API.`
           : status === 404
             ? 'Backend returned 404. Check that VITE_API_BASE_URL points to the correct API root.'
             : ''

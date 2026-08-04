@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CustomersAPI, ProfileAPI, BarcodeAPI } from "../api/client";
 import BarcodeScanner from "../components/BarcodeScanner";
 import { beepSuccess, beepError } from "../lib/beep";
-import { openExternalUrl } from "../lib/platform";
+import { openExternalUrl, isCapacitorNative } from "../lib/platform";
 import {
   getParkedSales,
   parkSale,
@@ -1363,14 +1363,18 @@ export default function Sell() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => window.print()}
-                  title="Print this receipt"
-                >
-                  <Printer size={16} />
-                  Print
-                </Button>
+                {/* Android's WebView has no window.print(), so the button is
+                    hidden there rather than doing nothing when tapped. */}
+                {!isCapacitorNative() && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.print()}
+                    title="Print this receipt"
+                  >
+                    <Printer size={16} />
+                    Print
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={handleWhatsAppReceipt}
