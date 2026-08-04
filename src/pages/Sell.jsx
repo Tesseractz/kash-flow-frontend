@@ -1,7 +1,17 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CustomersAPI, ProfileAPI } from "../api/client";
+import { ProductsAPI, SalesAPI, ReturnsAPI, NotificationsAPI, CustomersAPI, ProfileAPI, BarcodeAPI } from "../api/client";
+import BarcodeScanner from "../components/BarcodeScanner";
+import { beepSuccess, beepError } from "../lib/beep";
+import { openExternalUrl } from "../lib/platform";
+import {
+  getParkedSales,
+  parkSale,
+  removeParkedSale,
+  resumeParkedCart,
+  parkedSaleTotal,
+} from "../lib/parkedSales";
 import toast from "react-hot-toast";
 import { Button } from "../components/ui/Button";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
@@ -43,6 +53,13 @@ import {
   Tag,
   User,
   Gift,
+  ScanLine,
+  Printer,
+  TrendingUp,
+  PauseCircle,
+  History,
+  PlayCircle,
+  Share2,
 } from "lucide-react";
 
 const PRODUCTS_PER_PAGE = 12;
@@ -99,6 +116,16 @@ export default function Sell() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+
+  // Barcode scanning
+  const [showScanner, setShowScanner] = useState(false);
+  const searchInputRef = useRef(null);
+  const lastScanRef = useRef({ code: "", at: 0 });
+
+  // Parked (held) sales
+  const [parkedSales, setParkedSalesState] = useState(() => getParkedSales());
+  const [showParked, setShowParked] = useState(false);
+
   const productsQuery = useQuery({
     queryKey: ["products-for-sale"],
     queryFn: () => ProductsAPI.list({ page: 1, page_size: 1000 }),
@@ -119,6 +146,33 @@ export default function Sell() {
     queryFn: () => ProfileAPI.get(),
     staleTime: 60000,
   });
+
+  // Today's sales — the "recent-sales" key is already invalidated after each
+  // sale/sync, so these stats stay live for free.
+  const salesQuery = useQuery({
+    queryKey: ["recent-sales"],
+    queryFn: () => SalesAPI.list(),
+    staleTime: 60000,
+    enabled: isOnline,
+    refetchOnWindowFocus: false,
+  });
+
+  const todayStats = useMemo(() => {
+    const rows = salesQuery.data;
+    if (!Array.isArray(rows)) return null;
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    let count = 0;
+    let revenue = 0;
+    for (const s of rows) {
+      const t = new Date(s.timestamp);
+      if (Number.isNaN(t.getTime()) || t < dayStart) continue;
+      const amount = Number(s.total_price) || 0;
+      revenue += amount; // returns are negative rows → net revenue
+      if (amount >= 0) count += 1;
+    }
+    return { count, revenue };
+  }, [salesQuery.data]);
 
   useEffect(() => {
     if (productsQuery.data?.items?.length) {
@@ -294,6 +348,210 @@ export default function Sell() {
     setMode(newMode);
   };
 
+  // ---- Barcode scanning ----------------------------------------------------
+
+  const handleScannedCode = useCallback(
+    async (code) => {
+      // Debounce duplicate reads of the same code (camera loops, double-triggers)
+      const now = Date.now();
+      if (lastScanRef.current.code === code && now - lastScanRef.current.at < 2500) return;
+      lastScanRef.current = { code, at: now };
+
+      // Local match first — instant and works offline
+      const local = allProducts.find((p) => p.barcode === code || p.sku === code);
+      if (local) {
+        if (local.quantity === 0) {
+          beepError();
+          toast.error(`${local.name} is out of stock`);
+          return;
+        }
+        beepSuccess();
+        addToCart(local);
+        toast.success(`Scanned: ${local.name}`);
+        return;
+      }
+
+      if (!isOnline) {
+        beepError();
+        toast.error("Barcode not found in cached products");
+        return;
+      }
+
+      try {
+        const resp = await BarcodeAPI.lookup(code);
+        const full = allProducts.find((p) => p.id === resp.product_id) || {
+          id: resp.product_id,
+          name: resp.name,
+          price: resp.price,
+          quantity: resp.quantity,
+        };
+        if (full.quantity === 0) {
+          beepError();
+          toast.error(`${full.name} is out of stock`);
+          return;
+        }
+        beepSuccess();
+        addToCart(full);
+        toast.success(`Scanned: ${resp.name}`);
+      } catch (e) {
+        beepError();
+        toast.error(
+          e?.response?.status === 404
+            ? `No product for barcode "${code}"`
+            : "Barcode lookup failed"
+        );
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allProducts, isOnline]
+  );
+
+  // Page-wide USB/bluetooth scanner-gun capture: guns "type" the code much
+  // faster than a human (<60ms between keys) and finish with Enter. We only
+  // hijack the burst when focus is free or in the product search box — typing
+  // in other form fields (payment amount, customer search) is never touched.
+  useEffect(() => {
+    let buf = "";
+    let last = 0;
+    const isFormField = (el) =>
+      el &&
+      (el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.tagName === "SELECT" ||
+        el.isContentEditable);
+
+    const onKeyDown = (e) => {
+      if (showScanner || receiptModal.open || refundModal.open) return;
+      const now = performance.now();
+      if (now - last > 60) buf = "";
+      last = now;
+
+      if (e.key === "Enter") {
+        if (buf.length >= 4) {
+          const code = buf;
+          buf = "";
+          const el = document.activeElement;
+          if (isFormField(el) && el !== searchInputRef.current) return;
+          e.preventDefault();
+          if (el === searchInputRef.current) {
+            // The gun's keystrokes landed in the search box — clean them out.
+            setSearchQuery("");
+            setCurrentPage(1);
+          }
+          handleScannedCode(code);
+        }
+        return;
+      }
+      if (e.key.length === 1) buf += e.key;
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [showScanner, receiptModal.open, refundModal.open, handleScannedCode]);
+
+  // ---- Parked (held) sales -------------------------------------------------
+
+  const handleParkSale = () => {
+    if (cart.length === 0 || mode !== "sale") return;
+    const next = parkSale({
+      cart,
+      customer: selectedCustomer,
+      paymentMethod,
+    });
+    setParkedSalesState(next);
+    clearCart();
+    setShowCart(false);
+    toast.success("Sale parked — recall it any time");
+  };
+
+  const handleResumeParked = (entry) => {
+    if (cart.length > 0 && !confirm("Resuming will replace the current cart. Continue?")) {
+      return;
+    }
+    const { cart: restored, warnings } = resumeParkedCart(entry, allProducts);
+    if (restored.length === 0) {
+      toast.error("None of the parked items are still available");
+      warnings.forEach((w) => toast(w, { icon: "⚠️" }));
+      return;
+    }
+    setMode("sale");
+    setCart(restored);
+    setSelectedCustomer(entry.customer || null);
+    setPaymentMethod(entry.paymentMethod || "cash");
+    setPaymentAmount("");
+    setParkedSalesState(removeParkedSale(entry.id));
+    warnings.forEach((w) => toast(w, { icon: "⚠️" }));
+    setShowParked(false);
+    toast.success("Parked sale restored");
+  };
+
+  const handleDiscardParked = (id) => {
+    if (!confirm("Discard this parked sale?")) return;
+    setParkedSalesState(removeParkedSale(id));
+  };
+
+  // ---- Keyboard shortcuts ----------------------------------------------------
+  // "/" focus search · F2 scan · F4 cash/card · F9 complete sale · Esc close
+
+  useEffect(() => {
+    const anyOverlayOpen =
+      showScanner || showParked || receiptModal.open || refundModal.open;
+
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (showScanner) setShowScanner(false);
+        else if (showParked) setShowParked(false);
+        else if (showCustomerSearch) setShowCustomerSearch(false);
+        else if (showCart) setShowCart(false);
+        return;
+      }
+      if (anyOverlayOpen) return;
+
+      const el = document.activeElement;
+      const typing =
+        el &&
+        (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      if (e.key === "F2") {
+        e.preventDefault();
+        setShowScanner(true);
+        return;
+      }
+      if (e.key === "F4" && mode === "sale") {
+        e.preventDefault();
+        setPaymentMethod((m) => (m === "cash" ? "card" : "cash"));
+        return;
+      }
+      if (e.key === "F9" && mode === "sale") {
+        e.preventDefault();
+        if (canCompleteSale && !isSubmitting) handleSell();
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    showScanner,
+    showParked,
+    receiptModal.open,
+    refundModal.open,
+    showCustomerSearch,
+    showCart,
+    mode,
+    canCompleteSale,
+    isSubmitting,
+    cart,
+    paymentAmount,
+    paymentMethod,
+  ]);
+
   // Handle return processing
   const handleReturn = async () => {
     if (isSubmitting || cart.length === 0) return;
@@ -423,6 +681,7 @@ export default function Sell() {
         SalesAPI.create({
           product_id: item.product.id,
           quantity_sold: item.quantity,
+          payment_method: paymentMethod,
         })
       );
 
@@ -507,6 +766,26 @@ export default function Sell() {
     }
   };
 
+  // Share the receipt as a WhatsApp message (wa.me needs no API or number —
+  // the cashier picks the customer's chat). Very common in SA retail.
+  const handleWhatsAppReceipt = () => {
+    const store = profileQuery.data?.store_name || "Your Store";
+    const lines = [
+      `*${store}* — receipt${receiptModal.receiptId ? ` #${receiptModal.receiptId}` : ""}`,
+      new Date().toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+      ``,
+      ...receiptModal.items.map((i) => `${i.quantity}× ${i.name} — R ${Number(i.subtotal).toFixed(2)}`),
+      ``,
+      `*Total: R ${receiptModal.total.toFixed(2)}*`,
+      receiptModal.paymentMethod === "card"
+        ? `Paid by card`
+        : `Paid cash R ${receiptModal.paymentAmount.toFixed(2)} · change R ${receiptModal.change.toFixed(2)}`,
+      ``,
+      `Thank you for your support! 🙏`,
+    ];
+    openExternalUrl(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`);
+  };
+
   const closeReceiptModal = () => {
     setReceiptModal({
       open: false,
@@ -584,6 +863,7 @@ export default function Sell() {
               <div className="flex flex-col gap-3">
                 {/* Mode Toggle */}
                 <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800">
                     <button
                       onClick={() => switchMode("sale")}
@@ -607,6 +887,17 @@ export default function Sell() {
                       <RotateCcw size={15} />
                       <span className="hidden sm:inline">Return</span>
                     </button>
+                  </div>
+                  {parkedSales.length > 0 && (
+                    <button
+                      onClick={() => setShowParked(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 ring-1 ring-inset ring-violet-200/60 dark:ring-violet-900/40 hover:bg-violet-100 dark:hover:bg-violet-950/60 transition-colors"
+                      title="Parked sales — click to recall"
+                    >
+                      <History size={14} />
+                      Parked ({parkedSales.length})
+                    </button>
+                  )}
                   </div>
                   <div className="text-right">
                     <CardTitle className={`text-base sm:text-lg ${mode === "return" ? "text-amber-600 dark:text-amber-400" : ""}`}>
@@ -646,18 +937,49 @@ export default function Sell() {
                     </Button>
                   </div>
                 )}
-                {/* Search */}
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder={t("products.search_placeholder")}
-                    value={searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full pl-10 pr-4 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 focus:shadow-focus-ring outline-none transition-all duration-200 ease-out-expo"
-                  />
+                {/* Search + Scan */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder={t("products.search_placeholder")}
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="w-full pl-10 pr-4 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 focus:shadow-focus-ring outline-none transition-all duration-200 ease-out-expo"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setShowScanner(true)}
+                    className="flex items-center gap-1.5 px-3.5 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-brand-400 hover:text-brand-600 dark:hover:text-brand-400 transition-all duration-200 ease-out-expo flex-shrink-0"
+                    title="Scan a barcode (camera, USB scanner or manual entry)"
+                  >
+                    <ScanLine size={18} />
+                    <span className="hidden sm:inline">Scan</span>
+                  </button>
                 </div>
 
+                {/* Keyboard shortcut hints (desktop) */}
+                <p className="hidden lg:block text-[11px] text-slate-400 dark:text-slate-500 select-none">
+                  Shortcuts: <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono">/</kbd> search
+                  · <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono">F2</kbd> scan
+                  · <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono">F4</kbd> cash/card
+                  · <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono">F9</kbd> complete sale
+                </p>
+
+                {/* Today at a glance */}
+                {todayStats && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-50 dark:bg-accent-950/30 ring-1 ring-inset ring-accent-200/60 dark:ring-accent-900/40 text-xs font-semibold text-accent-700 dark:text-accent-300 tabular-nums">
+                      <TrendingUp size={13} />
+                      Today: R {todayStats.revenue.toFixed(2)}
+                    </span>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 ring-1 ring-inset ring-slate-200/70 dark:ring-slate-700/60 text-xs font-medium text-slate-600 dark:text-slate-300 tabular-nums">
+                      {todayStats.count} sale{todayStats.count === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto pb-4 px-4 py-3 sm:px-6 sm:py-4">
@@ -812,6 +1134,104 @@ export default function Sell() {
         </div>
       </div>
 
+      {/* Parked Sales Modal */}
+      {showParked && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowParked(false)}
+          />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <History size={20} className="text-violet-500" />
+                Parked sales
+              </h3>
+              <button
+                onClick={() => setShowParked(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {parkedSales.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">
+                Nothing parked. Add items to the cart and press “Park this sale”.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {parkedSales.map((entry) => {
+                  const itemCount = entry.cart.reduce((s, i) => s + i.quantity, 0);
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 ring-1 ring-slate-200/60 dark:ring-slate-700"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
+                          {entry.customer?.name ? `${entry.customer.name} · ` : ""}
+                          {itemCount} item{itemCount === 1 ? "" : "s"} · R {parkedSaleTotal(entry).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {new Date(entry.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+                          {entry.cart.map((i) => `${i.quantity}× ${i.product.name}`).join(", ").slice(0, 60)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleResumeParked(entry)}
+                        className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors flex-shrink-0"
+                        title="Resume this sale"
+                      >
+                        <PlayCircle size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleDiscardParked(entry.id)}
+                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex-shrink-0"
+                        title="Discard"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Barcode Scanner Modal */}
+      {showScanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowScanner(false)}
+          />
+          <div className="relative w-full max-w-md">
+            <BarcodeScanner
+              onProductFound={(resp) => {
+                const full =
+                  allProducts.find((p) => p.id === resp.product_id) || {
+                    id: resp.product_id,
+                    name: resp.name,
+                    price: resp.price,
+                    quantity: resp.quantity,
+                  };
+                if (full.quantity === 0) {
+                  beepError();
+                  toast.error(`${full.name} is out of stock`);
+                  return;
+                }
+                beepSuccess();
+                addToCart(full);
+              }}
+              onClose={() => setShowScanner(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Receipt Modal */}
       {receiptModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -843,7 +1263,7 @@ export default function Sell() {
             </div>
 
             {/* Receipt Details */}
-            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 mb-6 space-y-3">
+            <div id="receipt-print-area" className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 mb-6 space-y-3">
               {/* Store info */}
               <div className="text-center pb-3 border-b border-dashed border-slate-200 dark:border-slate-600">
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">
@@ -942,23 +1362,37 @@ export default function Sell() {
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => window.print()}
+                  title="Print this receipt"
+                >
+                  <Printer size={16} />
+                  Print
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleWhatsAppReceipt}
+                  title="Share the receipt via WhatsApp"
+                >
+                  <Share2 size={16} />
+                  WhatsApp
+                </Button>
                 <Button
                   variant="secondary"
-                  className="flex-1"
                   onClick={closeReceiptModal}
                 >
                   Done
                 </Button>
                 <Button
-                  className="flex-1"
                   onClick={handleSendReceipt}
                   disabled={
                     sendingReceipt || !receiptEmail.trim() || !canSendReceipt
                   }
                 >
                   <Send size={16} />
-                  {sendingReceipt ? "..." : "Send"}
+                  {sendingReceipt ? "..." : "Email"}
                 </Button>
               </div>
             </div>
@@ -1352,15 +1786,25 @@ export default function Sell() {
           )}
 
           {mode === "sale" ? (
-            <Button
-              className="w-full h-14 text-lg"
-              size="lg"
-              onClick={handleSell}
-              disabled={isSubmitting || !canCompleteSale}
-            >
-              <ShoppingCart size={24} />
-              {isSubmitting ? "Processing..." : t("sell.complete_sale")}
-            </Button>
+            <>
+              <Button
+                className="w-full h-14 text-lg"
+                size="lg"
+                onClick={handleSell}
+                disabled={isSubmitting || !canCompleteSale}
+              >
+                <ShoppingCart size={24} />
+                {isSubmitting ? "Processing..." : t("sell.complete_sale")}
+              </Button>
+              <button
+                onClick={handleParkSale}
+                className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 rounded-xl transition-colors"
+                title="Save this cart aside and serve the next customer"
+              >
+                <PauseCircle size={16} />
+                Park this sale for later
+              </button>
+            </>
           ) : (
             <Button
               className="w-full h-14 text-lg bg-amber-600 hover:bg-amber-700"

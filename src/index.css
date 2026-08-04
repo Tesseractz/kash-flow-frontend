@@ -250,3 +250,60 @@ h1, h2, h3 {
     @apply border-t border-slate-100 hover:bg-slate-50 transition-colors dark:border-slate-700 dark:hover:bg-slate-800/50;
   }
 }
+
+/* Barcode scanner camera overlay sweep line */
+@keyframes scanline {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(120px); }
+}
+.animate-scanline {
+  animation: scanline 2s ease-in-out infinite;
+}
+
+/* Receipt printing: hide the app, print only the receipt block (works with
+   regular and thermal printers via the browser's print dialog). */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #receipt-print-area,
+  #receipt-print-area *,
+  [data-print-area],
+  [data-print-area] * {
+    visibility: visible !important;
+  }
+  [data-print-area] {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 80mm;
+    margin: 0 !important;
+    padding: 4mm !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  [data-print-area] * {
+    color: black !important;
+    background: transparent !important;
+  }
+  #receipt-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 80mm; /* thermal receipt width; harmless on A4 */
+    margin: 0 !important;
+    padding: 4mm !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  #receipt-print-area * {
+    color: black !important;
+    background: transparent !important;
+  }
+}

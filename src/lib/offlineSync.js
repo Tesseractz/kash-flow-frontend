@@ -100,6 +100,7 @@ export const syncOfflineSales = async (SalesAPI) => {
           SalesAPI.create({
             product_id: item.product_id,
             quantity_sold: item.quantity,
+            payment_method: sale.paymentMethod === "card" ? "card" : "cash",
           })
         )
       );
