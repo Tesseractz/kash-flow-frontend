@@ -93,6 +93,15 @@ jobs:
     name: Deploy
     needs: release
     runs-on: ubuntu-latest
+    # Secrets are lifted into env here because the `secrets` context is not
+    # available in a step-level `if:` condition — only `env` is.
+    env:
+      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      FTP_HOST: ${{ secrets.FTP_HOST }}
+      FTP_USER: ${{ secrets.FTP_USER }}
+      FTP_PASS: ${{ secrets.FTP_PASS }}
     steps:
       - name: Checkout the released tag
         uses: actions/checkout@v4
@@ -106,37 +115,26 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
-      # Without these the bundle ships with an empty API base URL and the app
-      # cannot reach the backend at all.
+      # The VITE_* values come from the job env above. Without them the bundle
+      # ships with an empty API base URL and cannot reach the backend at all.
       - name: Build web assets
         run: npm run build
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: Fail if the build has no API base URL
-        run: |
-          if [ -z "${{ secrets.VITE_API_BASE_URL }}" ]; then
-            echo "::warning::VITE_API_BASE_URL is not set; skipping deploy to avoid publishing a broken build."
-            exit 0
-          fi
 
       - name: Deploy via FTP
-        if: ${{ secrets.FTP_HOST != '' && secrets.VITE_API_BASE_URL != '' }}
+        if: env.FTP_HOST != '' && env.VITE_API_BASE_URL != ''
         uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASS }}
+          server: ${{ env.FTP_HOST }}
+          username: ${{ env.FTP_USER }}
+          password: ${{ env.FTP_PASS }}
           protocol: ftp
           local-dir: dist/
           server-dir: /
 
       - name: Deployment summary
         run: |
-          if [ -n "${{ secrets.FTP_HOST }}" ] && [ -n "${{ secrets.VITE_API_BASE_URL }}" ]; then
+          if [ -n "$FTP_HOST" ] && [ -n "$VITE_API_BASE_URL" ]; then
             echo "Deployed v${{ needs.release.outputs.new_version }} over FTP." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Tagged v${{ needs.release.outputs.new_version }}. Deploy skipped — set VITE_API_BASE_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and the FTP_* secrets to enable it." >> "$GITHUB_STEP_SUMMARY"
+            echo "Tagged v${{ needs.release.outputs.new_version }}. Deploy skipped: set VITE_API_BASE_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and the FTP_* secrets to enable it." >> "$GITHUB_STEP_SUMMARY"
           fi
