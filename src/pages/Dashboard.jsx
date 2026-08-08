@@ -11,21 +11,15 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  StatCard,
 } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Skeleton, SkeletonText } from "../components/ui/Skeleton";
 import {
-  Banknote,
-  TrendingUp,
-  Receipt,
-  Scale,
   Package,
   AlertTriangle,
   BarChart3,
   Clock,
-  Calendar,
   Download,
   Lock,
   RefreshCw,
@@ -78,7 +72,7 @@ function niceMax(value) {
 function RevenueTrendChart({ trends }) {
   const [hover, setHover] = useState(null); // index into trends
   const W = 640;
-  const H = 220;
+  const H = 170;
   const PAD = { l: 46, r: 12, t: 16, b: 26 };
 
   const { points, yMax, peakIdx, hasData } = useMemo(() => {
@@ -99,7 +93,7 @@ function RevenueTrendChart({ trends }) {
 
   if (!trends.length || !hasData) {
     return (
-      <div className="h-52 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+      <div className="h-40 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
         No sales in this period yet.
       </div>
     );
@@ -232,10 +226,10 @@ function TopProducts({ products }) {
       {products.slice(0, 6).map((p) => (
         <div
           key={p.product_id}
-          className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+          className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
           title={`${p.name} — ${p.total_sold} sold · ${fmtR(p.total_revenue)} revenue${p.total_profit != null ? ` · ${fmtR(p.total_profit)} profit` : ""}`}
         >
-          <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <div className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
             {p.image_url ? (
               <img src={p.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
             ) : (
@@ -287,7 +281,7 @@ function HourlyChart({ hours }) {
 
   return (
     <div>
-      <div className="flex items-end gap-[3px] h-32">
+      <div className="flex items-end gap-[3px] h-24">
         {byHour.map((h) => {
           const pct = max > 0 ? ((Number(h.revenue) || 0) / max) * 100 : 0;
           const isPeak = h.hour === peakHour.hour && h.revenue > 0;
@@ -326,6 +320,77 @@ function HourlyChart({ hours }) {
 }
 
 // ---------------------------------------------------------------------------
+// Metric strip — one dense row instead of six chunky cards. Values are set at
+// a readable-but-restrained size with tabular figures so the column of digits
+// lines up, and each carries its own change-vs-previous-period chip.
+// ---------------------------------------------------------------------------
+
+function DeltaChip({ pct, invert = false }) {
+  if (pct == null || !Number.isFinite(pct)) {
+    return <span className="text-[11px] text-slate-400 dark:text-slate-600">no prior data</span>;
+  }
+  const flat = Math.abs(pct) < 0.05;
+  // For most metrics up is good; for returns it is the opposite.
+  const good = invert ? pct < 0 : pct > 0;
+  const tone = flat
+    ? "text-slate-500 dark:text-slate-400"
+    : good
+    ? "text-accent-700 dark:text-accent-400"
+    : "text-rose-600 dark:text-rose-400";
+  const arrow = flat ? "→" : pct > 0 ? "↑" : "↓";
+  return (
+    <span className={`text-[11px] font-medium tabular-nums ${tone}`} title="vs the previous period of equal length">
+      {arrow} {Math.abs(pct).toFixed(pct >= 100 ? 0 : 1)}%
+    </span>
+  );
+}
+
+function Metric({ label, value, sub, delta, invert, accent = false }) {
+  return (
+    <div className="px-3.5 py-2.5 min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 truncate">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-lg font-semibold tabular-nums leading-none truncate ${
+          accent ? "text-brand-700 dark:text-brand-300" : "text-slate-900 dark:text-white"
+        }`}
+      >
+        {value}
+      </p>
+      <div className="mt-1 flex items-center gap-1.5 min-h-[15px]">
+        {delta !== undefined ? <DeltaChip pct={delta} invert={invert} /> : null}
+        {sub && <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+function MetricStrip({ children }) {
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-slate-100 dark:divide-slate-800">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** A single line of plain-language analysis under the metric strip. */
+function InsightRow({ items }) {
+  const shown = items.filter(Boolean);
+  if (!shown.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11.5px] text-slate-500 dark:text-slate-400">
+      {shown.map((t, i) => (
+        <span key={i} className="inline-flex items-center gap-1.5">
+          <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+          {t}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const isOnline = useOnlineStatus();
@@ -452,6 +517,50 @@ export default function Dashboard() {
     return { hourly, topProducts };
   }, [dailyTransactions]);
 
+  // Period-over-period comparison, computed from the sales rows already
+  // fetched for staff performance. The analytics endpoint only reports
+  // "first half vs second half" of the window, which answers a different
+  // question than "how are we doing against last month".
+  const periodStats = useMemo(() => {
+    const rows = allSalesQuery.data;
+    if (!Array.isArray(rows)) return null;
+    const now = new Date();
+    const curFrom = new Date(now);
+    curFrom.setDate(curFrom.getDate() - days);
+    const prevFrom = new Date(now);
+    prevFrom.setDate(prevFrom.getDate() - days * 2);
+
+    const blank = () => ({ revenue: 0, profit: 0, sales: 0, returns: 0, items: 0 });
+    const cur = blank();
+    const prev = blank();
+
+    for (const s of rows) {
+      const t = new Date(s.timestamp);
+      if (Number.isNaN(t.getTime())) continue;
+      const bucket = t >= curFrom ? cur : t >= prevFrom ? prev : null;
+      if (!bucket) continue;
+      const total = Number(s.total_price) || 0;
+      const qty = Number(s.quantity_sold) || 0;
+      bucket.revenue += total;
+      if (s.profit != null) bucket.profit += Number(s.profit) || 0;
+      if (total < 0 || qty < 0) bucket.returns += 1;
+      else {
+        bucket.sales += 1;
+        bucket.items += qty;
+      }
+    }
+    return { cur, prev };
+  }, [allSalesQuery.data, days]);
+
+  /** Percentage change vs the previous period; null when there is no baseline. */
+  const delta = (current, previous) => {
+    if (previous == null || previous === 0) return null;
+    return ((current - previous) / Math.abs(previous)) * 100;
+  };
+
+  const pc = periodStats;
+  const avgOf = (b) => (b && b.sales > 0 ? b.revenue / b.sales : 0);
+
   const advanced = canViewAdvanced && !!a;
 
   const kpis = advanced
@@ -476,6 +585,32 @@ export default function Dashboard() {
 
   const isLoading = (advanced ? analyticsQuery.isLoading : reportQuery.isLoading) && !usingCache;
 
+  // A short line of plain-language findings. Each one states something the
+  // numbers above imply but do not say outright, so the reader is not left to
+  // work it out from the charts.
+  const insights = useMemo(() => {
+    const out = [];
+    const hours = advanced ? a?.hourly_breakdown || [] : basic.hourly;
+    const peak = hours.reduce((best, h) => ((h?.revenue || 0) > (best?.revenue || 0) ? h : best), null);
+    if (peak && peak.revenue > 0) {
+      out.push(`Busiest hour ${String(peak.hour).padStart(2, "0")}:00–${String((peak.hour + 1) % 24).padStart(2, "0")}:00 (${fmtRCompact(peak.revenue)})`);
+    }
+    if (advanced && a?.best_day) {
+      out.push(`Best day ${fmtDay(a.best_day)} · ${fmtRCompact(a.best_day_revenue)}`);
+    }
+    const top = (advanced ? a?.top_products : basic.topProducts) || [];
+    if (top.length && top[0]?.total_revenue > 0) {
+      const share = kpis.revenue > 0 ? (top[0].total_revenue / kpis.revenue) * 100 : 0;
+      out.push(
+        `${top[0].name} leads${share > 0 ? ` with ${share.toFixed(0)}% of revenue` : ""}`
+      );
+    }
+    if (pc && pc.cur.sales > 0 && pc.cur.items > 0) {
+      out.push(`${(pc.cur.items / pc.cur.sales).toFixed(1)} items per sale`);
+    }
+    return out;
+  }, [advanced, a, basic, kpis.revenue, pc]);
+
   const handleExport = async () => {
     if (!isOnline) return toast.error("You are offline. Connect to export reports.");
     if (!canExport) return toast.error("CSV export requires Pro or Business plan");
@@ -499,21 +634,22 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Title + controls */}
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {advanced ? "Advanced insights for your business" : "Daily sales performance"}
-          </p>
+    <div className="space-y-3">
+      {/* Toolbar — one compact row; the page title carries the period so the
+          reader always knows what the numbers below describe. */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h1 className="font-display text-lg font-semibold text-slate-900 dark:text-white">Dashboard</h1>
+          <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+            {advanced ? `last ${days} days vs previous ${days}` : "daily performance"}
+          </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {canViewAdvanced && (
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="h-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-sm text-slate-800 dark:text-white outline-none focus:border-brand-500"
+              className="h-8 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs text-slate-800 dark:text-white outline-none focus:border-brand-500"
               aria-label="Analytics period"
             >
               {PERIODS.map((d) => (
@@ -523,40 +659,40 @@ export default function Dashboard() {
               ))}
             </select>
           )}
-          <div className="flex items-center gap-1.5" title="Daily snapshot and CSV export use this date">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-sm text-slate-800 dark:text-white outline-none focus:border-brand-500"
-              aria-label="Snapshot date"
-            />
-          </div>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="h-8 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs text-slate-800 dark:text-white outline-none focus:border-brand-500"
+            aria-label="Snapshot date"
+            title="Daily snapshot and CSV export use this date"
+          />
           <Button
             variant={canExport ? "secondary" : "ghost"}
-            size="sm"
+            size="xs"
             onClick={handleExport}
             disabled={exporting || !isOnline}
           >
-            {canExport ? <Download size={15} /> : <Lock size={15} />}
-            {exporting ? "Exporting…" : "Export CSV"}
+            {canExport ? <Download size={13} /> : <Lock size={13} />}
+            {exporting ? "Exporting…" : "Export"}
           </Button>
-          <Button variant="primary" size="sm" onClick={() => setShowCashUp(true)}>
-            <Calculator size={15} />
+          <Button variant="primary" size="xs" onClick={() => setShowCashUp(true)}>
+            <Calculator size={13} />
             End of day
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size="xs"
             onClick={() => {
               reportQuery.refetch();
               if (canViewAdvanced) analyticsQuery.refetch();
               lowStockQuery.refetch();
+              allSalesQuery.refetch();
             }}
             disabled={!isOnline}
+            title="Refresh"
           >
-            <RefreshCw size={15} className={reportQuery.isFetching || analyticsQuery.isFetching ? "animate-spin" : ""} />
+            <RefreshCw size={13} className={reportQuery.isFetching || analyticsQuery.isFetching ? "animate-spin" : ""} />
           </Button>
         </div>
       </div>
@@ -593,47 +729,62 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* KPI tiles */}
+      {/* Metrics */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardContent className="py-5">
-                <SkeletonText lines={2} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="py-4">
+            <SkeletonText lines={2} />
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard
-            title={kpis.revenueLabel}
-            value={fmtR(kpis.revenue)}
-            icon={Banknote}
-            accent="brand"
-            trend={advanced && kpis.trend ? `${Math.abs(kpis.trend)}% vs first half` : undefined}
-            trendUp={kpis.trend > 0}
-          />
-          <StatCard
-            title="Profit"
-            value={fmtR(kpis.profit)}
-            icon={TrendingUp}
-            accent="accent"
-            trend={`${(kpis.margin || 0).toFixed(1)}% margin`}
-            trendUp={kpis.profit >= 0}
-          />
-          <StatCard title="Sales" value={(kpis.sales || 0).toLocaleString("en-ZA")} icon={Receipt} accent="warm" />
-          <StatCard title="Avg transaction" value={fmtR(kpis.avg)} icon={Scale} accent="neutral" />
-        </div>
+        <>
+          <MetricStrip>
+            <Metric
+              label={advanced ? `Revenue · ${days}d` : "Revenue today"}
+              value={fmtR(kpis.revenue)}
+              delta={pc ? delta(pc.cur.revenue, pc.prev.revenue) : undefined}
+              accent
+            />
+            <Metric
+              label="Gross profit"
+              value={fmtR(kpis.profit)}
+              sub={`${(kpis.margin || 0).toFixed(1)}% margin`}
+              delta={pc ? delta(pc.cur.profit, pc.prev.profit) : undefined}
+            />
+            <Metric
+              label="Sales"
+              value={(kpis.sales || 0).toLocaleString("en-ZA")}
+              delta={pc ? delta(pc.cur.sales, pc.prev.sales) : undefined}
+            />
+            <Metric
+              label="Avg sale"
+              value={fmtR(kpis.avg)}
+              delta={pc ? delta(avgOf(pc.cur), avgOf(pc.prev)) : undefined}
+            />
+            <Metric
+              label="Items sold"
+              value={pc ? pc.cur.items.toLocaleString("en-ZA") : "—"}
+              delta={pc ? delta(pc.cur.items, pc.prev.items) : undefined}
+            />
+            <Metric
+              label="Returns"
+              value={pc ? pc.cur.returns.toLocaleString("en-ZA") : "—"}
+              sub={pc && pc.cur.sales > 0 ? `${((pc.cur.returns / pc.cur.sales) * 100).toFixed(1)}% of sales` : ""}
+              delta={pc ? delta(pc.cur.returns, pc.prev.returns) : undefined}
+              invert
+            />
+          </MetricStrip>
+          <InsightRow items={insights} />
+        </>
       )}
 
       {/* Revenue trend (advanced) */}
       {canViewAdvanced && (
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1.5 px-4 pt-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <CardTitle className="text-base">Revenue trend</CardTitle>
+                <CardTitle className="text-sm">Revenue trend</CardTitle>
                 <CardDescription>Daily revenue over the selected period</CardDescription>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -652,7 +803,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {analyticsQuery.isLoading && !a ? (
-              <Skeleton className="h-52 w-full rounded-xl" />
+              <Skeleton className="h-40 w-full rounded-xl" />
             ) : (
               <RevenueTrendChart trends={a?.sales_trends || []} />
             )}
@@ -661,10 +812,10 @@ export default function Dashboard() {
       )}
 
       {/* Top products + hourly */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Top products</CardTitle>
+          <CardHeader className="pb-1.5 px-4 pt-3">
+            <CardTitle className="text-sm">Top products</CardTitle>
             <CardDescription>{advanced ? "By revenue in the period" : `For ${fmtDay(date)}`}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -677,16 +828,16 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1.5 px-4 pt-3">
             <div className="flex items-center gap-2">
               <Clock size={15} className="text-slate-400" />
-              <CardTitle className="text-base">Busy hours</CardTitle>
+              <CardTitle className="text-sm">Busy hours</CardTitle>
             </div>
             <CardDescription>{advanced ? "Revenue by hour of day" : `Hourly activity on ${fmtDay(date)}`}</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 px-4 pb-3">
             {isLoading ? (
-              <Skeleton className="h-32 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
             ) : (
               <HourlyChart hours={advanced ? a?.hourly_breakdown || [] : basic.hourly} />
             )}
@@ -696,10 +847,10 @@ export default function Dashboard() {
 
       {/* Daily snapshot */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-1.5 px-4 pt-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <CardTitle className="text-base">
+              <CardTitle className="text-sm">
                 Snapshot · {new Date(date).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" })}
               </CardTitle>
               <CardDescription>Totals for the selected date — exports use this date too</CardDescription>
@@ -729,10 +880,10 @@ export default function Dashboard() {
       {/* Staff performance */}
       {staffStats.length > 0 && (
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1.5 px-4 pt-3">
             <div className="flex items-center gap-2">
               <UsersIcon size={15} className="text-slate-400" />
-              <CardTitle className="text-base">Staff performance</CardTitle>
+              <CardTitle className="text-sm">Staff performance</CardTitle>
             </div>
             <CardDescription>Net revenue by team member · last {days} days</CardDescription>
           </CardHeader>
@@ -741,8 +892,8 @@ export default function Dashboard() {
               {staffStats.map((m) => {
                 const max = Math.max(...staffStats.map((x) => x.revenue), 1);
                 return (
-                  <div key={m.id} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-accent-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  <div key={m.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                    <div className="w-6 h-6 rounded-full bg-accent-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                       {(m.name || "?").charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -772,11 +923,11 @@ export default function Dashboard() {
 
       {/* Low stock */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-1.5 px-4 pt-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <AlertTriangle size={15} className="text-amber-500" />
-              <CardTitle className="text-base">Low stock</CardTitle>
+              <CardTitle className="text-sm">Low stock</CardTitle>
             </div>
             <Link to="/products" className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">
               Manage products →
