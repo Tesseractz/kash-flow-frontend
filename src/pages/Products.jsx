@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
+import { chip, stockBand } from "../lib/tone";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -49,6 +50,10 @@ function formatZAR(value) {
     return `R ${Number(value || 0).toFixed(2)}`;
   }
 }
+
+// Stock badges use the shared bands so a product that appears in the
+// Dashboard's low-stock list is never shown as healthy green here.
+const chipTone = (qty) => chip(stockBand(qty));
 
 export default function Products() {
   const qc = useQueryClient();
@@ -733,13 +738,7 @@ export default function Products() {
                           )}
                         </div>
                         <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                            p.quantity === 0
-                              ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
-                              : p.quantity <= 5
-                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
-                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"
-                          }`}
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ring-1 ring-inset ${chipTone(p.quantity)}`}
                         >
                           {p.quantity}
                         </span>
@@ -852,13 +851,7 @@ export default function Products() {
                         </td>
                         <td className="py-4 px-4">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                              p.quantity === 0
-                                ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
-                                : p.quantity <= 5
-                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
-                                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"
-                            }`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset ${chipTone(p.quantity)}`}
                           >
                             {p.quantity} in stock
                           </span>

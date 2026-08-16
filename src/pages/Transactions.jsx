@@ -9,9 +9,17 @@ import {
   transactionTotals,
   transactionsToCSV,
 } from "../lib/transactionUtils";
+import {
+  text,
+  chip,
+  moneyTone,
+  marginBand,
+  TYPE_TONE,
+  PAYMENT_TONE,
+  ROW_TINT,
+} from "../lib/tone";
 import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Badge } from "../components/ui/Badge";
 import { SkeletonText } from "../components/ui/Skeleton";
 import { EmptyState } from "../components/ui/EmptyState";
 import {
@@ -74,6 +82,7 @@ export default function Transactions() {
   const [from, setFrom] = useState(dateParam || isoDaysAgo(30));
   const [to, setTo] = useState(dateParam || todayISO());
   const [type, setType] = useState("all");
+  const [payment, setPayment] = useState("all");
   const [sort, setSort] = useState({ key: "timestamp", dir: "desc" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -110,9 +119,28 @@ export default function Transactions() {
     [salesQuery.data, productsQuery.data, customersQuery.data, usersQuery.data]
   );
 
+  // Narrowed by search and date only. The chip counts come from here, so a
+  // chip shows what clicking it would give rather than what is already shown.
+  const baseRows = useMemo(
+    () => filterTransactions(enriched, { q, from, to }),
+    [enriched, q, from, to]
+  );
+  const baseTotals = useMemo(() => transactionTotals(baseRows), [baseRows]);
+  const payCounts = useMemo(() => {
+    let cash = 0;
+    let card = 0;
+    let none = 0;
+    for (const r of baseRows) {
+      if (r.payment_method === "cash") cash += 1;
+      else if (r.payment_method === "card") card += 1;
+      else none += 1;
+    }
+    return { cash, card, none };
+  }, [baseRows]);
+
   const filtered = useMemo(
-    () => sortTransactions(filterTransactions(enriched, { q, from, to, type }), sort.key, sort.dir),
-    [enriched, q, from, to, type, sort]
+    () => sortTransactions(filterTransactions(baseRows, { type, payment }), sort.key, sort.dir),
+    [baseRows, type, payment, sort]
   );
 
   const totals = useMemo(() => transactionTotals(filtered), [filtered]);
@@ -187,117 +215,119 @@ export default function Transactions() {
 
   const isLoading = salesQuery.isLoading || productsQuery.isLoading;
 
+  const pctText = (v) => (v == null ? "\u2014" : v.toFixed(1) + "%");
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">Transactions</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Every sale and return — search, filter, select and export
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h1 className="font-display text-lg font-semibold text-slate-900 dark:text-white">Transactions</h1>
+          <span className="text-xs text-slate-400 dark:text-slate-500 truncate tabular-nums">
+            {filtered.length.toLocaleString()} of {enriched.length.toLocaleString()} rows
+          </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             variant={canExport ? "secondary" : "ghost"}
-            size="sm"
+            size="xs"
             onClick={() => exportCSV(filtered, "filtered")}
             disabled={isLoading}
           >
-            {canExport ? <Download size={15} /> : <Lock size={15} />}
-            Export {filtered.length > 0 ? `(${filtered.length})` : ""}
+            {canExport ? <Download size={13} /> : <Lock size={13} />}
+            Export{filtered.length > 0 ? " (" + filtered.length + ")" : ""}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => salesQuery.refetch()} disabled={salesQuery.isFetching}>
-            <RefreshCw size={15} className={salesQuery.isFetching ? "animate-spin" : ""} />
+          <Button variant="ghost" size="xs" onClick={() => salesQuery.refetch()} disabled={salesQuery.isFetching} title="Refresh">
+            <RefreshCw size={13} className={salesQuery.isFetching ? "animate-spin" : ""} />
           </Button>
         </div>
       </div>
 
-      {/* Filter toolbar */}
-      <Card>
-        <CardContent className="py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[180px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search product, SKU, customer, seller or #id…"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  resetPage();
-                }}
-                className="w-full pl-9 pr-3 h-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 focus:shadow-focus-ring outline-none transition-all"
-              />
-            </div>
+      {/* Totals for the current selection. Cost and margin are the numbers a
+          shop owner checks straight after revenue, and neither was shown. */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-slate-100 dark:divide-slate-800">
+          <Stat label="Revenue" value={fmtR(totals.revenue)} tone="ink" />
+          <Stat label="Cost of goods" value={fmtR(totals.cost)} tone="muted" />
+          <Stat label="Gross profit" value={fmtR(totals.profit)} tone={moneyTone(totals.profit)} />
+          <Stat label="Margin" value={pctText(totals.margin)} tone={marginBand(totals.margin)} />
+          <Stat label="Items sold" value={totals.items.toLocaleString("en-ZA")} tone="ink" />
+          <Stat
+            label="Refunded"
+            value={fmtR(totals.refunded)}
+            tone={totals.refunded > 0 ? "danger" : "neutral"}
+            sub={totals.returnCount + (totals.returnCount === 1 ? " return" : " returns")}
+          />
+        </div>
+      </div>
 
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  resetPage();
-                }}
-                className="h-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-sm text-slate-800 dark:text-white outline-none focus:border-brand-500"
-                aria-label="From date"
-              />
-              <span className="text-slate-400 text-sm">→</span>
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  resetPage();
-                }}
-                className="h-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-sm text-slate-800 dark:text-white outline-none focus:border-brand-500"
-                aria-label="To date"
-              />
-            </div>
+      {/* One-click narrowing. Counts come from the search and date range only,
+          so a chip always shows exactly what clicking it will give you. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <FilterChip tone="success" active={type === "sale"} count={baseTotals.saleCount}
+          onClick={() => { setType(type === "sale" ? "all" : "sale"); resetPage(); }}>Sales</FilterChip>
+        <FilterChip tone="danger" active={type === "return"} count={baseTotals.returnCount}
+          onClick={() => { setType(type === "return" ? "all" : "return"); resetPage(); }}>Returns</FilterChip>
+        <span className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+        <FilterChip tone="success" active={payment === "cash"} count={payCounts.cash}
+          onClick={() => { setPayment(payment === "cash" ? "all" : "cash"); resetPage(); }}>Cash</FilterChip>
+        <FilterChip tone="info" active={payment === "card"} count={payCounts.card}
+          onClick={() => { setPayment(payment === "card" ? "all" : "card"); resetPage(); }}>Card</FilterChip>
+        {payCounts.none > 0 && (
+          <FilterChip tone="neutral" active={payment === "unspecified"} count={payCounts.none}
+            title="Sales taken before the payment method was recorded"
+            onClick={() => { setPayment(payment === "unspecified" ? "all" : "unspecified"); resetPage(); }}>Unspecified</FilterChip>
+        )}
+        {(type !== "all" || payment !== "all") && (
+          <button type="button"
+            onClick={() => { setType("all"); setPayment("all"); resetPage(); }}
+            className="text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+            Clear
+          </button>
+        )}
+      </div>
 
-            <select
-              value={type}
-              onChange={(e) => {
-                setType(e.target.value);
-                resetPage();
-              }}
-              className="h-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-sm text-slate-800 dark:text-white outline-none focus:border-brand-500"
-              aria-label="Type filter"
-            >
-              <option value="all">All types</option>
-              <option value="sale">Sales only</option>
-              <option value="return">Returns only</option>
-            </select>
-
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl ring-1 ring-slate-200/60 dark:ring-slate-800">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => applyPreset(p.key)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-900 transition-all"
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search and date range */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search product, SKU, customer, seller or #id..."
+            value={q}
+            onChange={(e) => { setQ(e.target.value); resetPage(); }}
+            className="w-full pl-8 pr-3 h-8 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 outline-none"
+          />
+        </div>
+        <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); resetPage(); }}
+          className="h-8 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs text-slate-800 dark:text-white outline-none focus:border-brand-500"
+          aria-label="From date" />
+        <span className="text-slate-400 text-xs">to</span>
+        <input type="date" value={to} onChange={(e) => { setTo(e.target.value); resetPage(); }}
+          className="h-8 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs text-slate-800 dark:text-white outline-none focus:border-brand-500"
+          aria-label="To date" />
+        <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg">
+          {PRESETS.map((pr) => (
+            <button key={pr.key} onClick={() => applyPreset(pr.key)}
+              className="px-2 py-1 rounded-md text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-900 transition">
+              {pr.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Selection action bar */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-brand-50 dark:bg-brand-950/40 ring-1 ring-inset ring-brand-200/60 dark:ring-brand-900/40 px-4 py-2.5 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-brand-50 dark:bg-brand-950/40 ring-1 ring-inset ring-brand-200/60 dark:ring-brand-900/40 px-3 py-2 text-xs">
           <span className="font-semibold text-brand-700 dark:text-brand-300 tabular-nums">
-            {selected.size} selected · {fmtR(selectedTotals.revenue)}
+            {selected.size} selected &middot; {fmtR(selectedTotals.revenue)} &middot; profit {fmtR(selectedTotals.profit)}
           </span>
           <Button size="xs" variant="secondary" onClick={() => exportCSV(selectedRows, "selected")}>
-            <Download size={13} /> Export selected
+            <Download size={12} /> Export selected
           </Button>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="ml-auto inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            <X size={13} /> Clear selection
+          <button onClick={() => setSelected(new Set())}
+            className="ml-auto inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+            <X size={12} /> Clear
           </button>
         </div>
       )}
@@ -306,148 +336,117 @@ export default function Transactions() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6">
-              <SkeletonText lines={6} />
-            </div>
+            <div className="p-5"><SkeletonText lines={6} /></div>
           ) : filtered.length === 0 ? (
-            <div className="py-10">
-              <EmptyState
-                icon={ShoppingBag}
-                title="No transactions match"
-                description="Try widening the date range or clearing the search."
-                compact
-              />
+            <div className="py-8">
+              <EmptyState icon={ShoppingBag} title="No transactions match"
+                description="Try widening the date range or clearing the filters." compact />
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl">
-              <table className="w-full min-w-[980px] text-sm">
+            <div className="overflow-x-auto rounded-xl">
+              <table className="w-full min-w-[1120px] text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="px-3 py-2.5 sticky top-0 bg-slate-50 dark:bg-slate-800 z-10 w-10">
-                      <input
-                        type="checkbox"
-                        checked={pageAllSelected}
-                        onChange={togglePage}
-                        aria-label="Select page"
-                        className="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                      />
+                    <th className="px-2 py-2 sticky top-0 bg-slate-50 dark:bg-slate-800 z-10 w-8">
+                      <input type="checkbox" checked={pageAllSelected} onChange={togglePage} aria-label="Select page"
+                        className="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 cursor-pointer" />
                     </th>
                     <SortHeader label="#" k="id" sort={sort} onSort={onSort} />
-                    <SortHeader label="Date / Time" k="timestamp" sort={sort} onSort={onSort} />
+                    <SortHeader label="Date / time" k="timestamp" sort={sort} onSort={onSort} />
                     <SortHeader label="Product" k="product" sort={sort} onSort={onSort} />
                     <SortHeader label="Qty" k="quantity" sort={sort} onSort={onSort} align="right" />
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-800 z-10 whitespace-nowrap">
-                      Unit
-                    </th>
+                    <Th align="right">Unit</Th>
                     <SortHeader label="Total" k="total" sort={sort} onSort={onSort} align="right" />
+                    <Th align="right">Cost</Th>
                     <SortHeader label="Profit" k="profit" sort={sort} onSort={onSort} align="right" />
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
-                      Customer
-                    </th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
-                      Sold by
-                    </th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
-                      Type
-                    </th>
+                    <Th align="right">Margin</Th>
+                    <Th>Pay</Th>
+                    <Th>Customer</Th>
+                    <Th>Sold by</Th>
+                    <Th>Type</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageRows.map((r) => {
                     const isSel = selected.has(r.id);
+                    const rowCls = isSel ? "bg-brand-50 dark:bg-brand-950/40" : (ROW_TINT[r.type] || "");
                     return (
-                      <tr
-                        key={r.id}
-                        className={`border-t border-slate-100 dark:border-slate-800 transition-colors ${
-                          isSel
-                            ? "bg-brand-50/70 dark:bg-brand-950/30"
-                            : r.type === "return"
-                            ? "bg-rose-50/60 dark:bg-rose-950/20 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                            : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                        }`}
-                      >
-                        <td className="px-3 py-2">
-                          <input
-                            type="checkbox"
-                            checked={isSel}
-                            onChange={() => toggleRow(r.id)}
-                            aria-label={`Select transaction ${r.id}`}
-                            className="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                          />
+                      <tr key={r.id} className={"border-t border-slate-100 dark:border-slate-800 transition-colors " + rowCls}>
+                        <td className="px-2 py-1.5">
+                          <input type="checkbox" checked={isSel} onChange={() => toggleRow(r.id)}
+                            aria-label={"Select transaction " + r.id}
+                            className="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 cursor-pointer" />
                         </td>
-                        <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <td className="px-2 py-1.5 font-mono text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
                           #{r.id}
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <div className="text-slate-800 dark:text-slate-200 tabular-nums">
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-slate-800 dark:text-slate-200 tabular-nums">
                             {new Date(r.timestamp).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                          </div>
-                          <div className="text-xs text-slate-400 tabular-nums">
+                          </span>
+                          <span className="ml-1.5 text-[11px] text-slate-400 tabular-nums">
                             {new Date(r.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                          </div>
+                          </span>
                         </td>
-                        <td className="px-3 py-2 min-w-[200px]">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                              {r.image_url ? (
-                                <img src={r.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                              ) : (
-                                <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
-                              )}
+                        <td className="px-2 py-1.5 min-w-[180px]">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {r.image_url
+                                ? <img src={r.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                : <ImageIcon className="w-3 h-3 text-slate-400" />}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium text-slate-800 dark:text-slate-100 truncate max-w-[220px]">
+                              <p className="font-medium text-slate-800 dark:text-slate-100 truncate max-w-[190px] leading-tight">
                                 {r.product_name}
                               </p>
-                              {r.sku && <p className="text-[11px] text-slate-400 font-mono truncate">{r.sku}</p>}
+                              {r.sku && <p className="text-[10px] text-slate-400 font-mono truncate leading-tight">{r.sku}</p>}
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                        <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + (r.quantity < 0 ? text("danger") : "text-slate-700 dark:text-slate-300")}>
                           {r.quantity}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <td className="px-2 py-1.5 text-right tabular-nums text-slate-500 dark:text-slate-400 whitespace-nowrap">
                           {fmtR(r.unit_price)}
                         </td>
-                        <td
-                          className={`px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap ${
-                            r.total < 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"
-                          }`}
-                        >
+                        <td className={"px-2 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap " + (r.total < 0 ? text("danger") : text("ink"))}>
                           {fmtR(r.total)}
                         </td>
-                        <td
-                          className={`px-3 py-2 text-right tabular-nums whitespace-nowrap ${
-                            r.profit == null
-                              ? "text-slate-400"
-                              : r.profit < 0
-                              ? "text-rose-600 dark:text-rose-400"
-                              : "text-accent-700 dark:text-accent-400"
-                          }`}
-                        >
-                          {r.profit == null ? "—" : fmtR(r.profit)}
+                        <td className="px-2 py-1.5 text-right tabular-nums text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                          {r.cost == null ? "\u2014" : fmtR(r.cost)}
                         </td>
-                        <td className="px-3 py-2 text-slate-600 dark:text-slate-300 truncate max-w-[140px]">
-                          {r.customer_name || <span className="text-slate-300 dark:text-slate-600">—</span>}
+                        <td className={"px-2 py-1.5 text-right tabular-nums font-medium whitespace-nowrap " + (r.profit == null ? text("muted") : text(moneyTone(r.profit)))}>
+                          {r.profit == null ? "\u2014" : fmtR(r.profit)}
                         </td>
-                        <td className="px-3 py-2 text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
-                          {r.sold_by_name || <span className="text-slate-300 dark:text-slate-600">—</span>}
-                        </td>
-                        <td className="px-3 py-2">
-                          {r.type === "return" ? (
-                            <Badge tone="danger" size="sm" icon={RotateCcw}>
-                              Return
-                            </Badge>
+                        <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                          {r.margin == null ? (
+                            <span className={text("muted")}>&mdash;</span>
                           ) : (
-                            <Badge tone="success" size="sm" icon={ShoppingBag}>
-                              Sale
-                            </Badge>
+                            <span className={"inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ring-1 ring-inset " + chip(marginBand(r.margin))}>
+                              {r.margin.toFixed(0)}%
+                            </span>
                           )}
-                          {r.payment_method && (
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 capitalize">
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          {r.payment_method ? (
+                            <span className={"inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold capitalize ring-1 ring-inset " + chip(PAYMENT_TONE[r.payment_method] || "neutral")}>
                               {r.payment_method}
-                            </p>
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600">&mdash;</span>
                           )}
+                        </td>
+                        <td className="px-2 py-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[120px]">
+                          {r.customer_name || <span className="text-slate-300 dark:text-slate-600">&mdash;</span>}
+                        </td>
+                        <td className="px-2 py-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[130px]">
+                          {r.sold_by_name || <span className="text-slate-300 dark:text-slate-600">&mdash;</span>}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <span className={"inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ring-1 ring-inset " + chip(TYPE_TONE[r.type])}>
+                            {r.type === "return" ? <RotateCcw size={9} /> : <ShoppingBag size={9} />}
+                            {r.type === "return" ? "Return" : "Sale"}
+                          </span>
                         </td>
                       </tr>
                     );
@@ -459,62 +458,63 @@ export default function Transactions() {
         </CardContent>
       </Card>
 
-      {/* Totals + pagination footer */}
+      {/* Footer */}
       {!isLoading && filtered.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-          <div className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
-            <span className="tabular-nums">
-              <strong className="text-slate-900 dark:text-white">{totals.count}</strong> row{totals.count === 1 ? "" : "s"}
-            </span>
-            <span className="text-slate-300 dark:text-slate-600">·</span>
-            <span className="tabular-nums">{totals.saleCount} sales</span>
-            {totals.returnCount > 0 && (
-              <>
-                <span className="text-slate-300 dark:text-slate-600">·</span>
-                <span className="tabular-nums text-rose-600 dark:text-rose-400">{totals.returnCount} returns</span>
-              </>
-            )}
-            <span className="text-slate-300 dark:text-slate-600">·</span>
-            <span className="tabular-nums">
-              Net <strong className="text-slate-900 dark:text-white">{fmtR(totals.revenue)}</strong>
-            </span>
-            <span className="text-slate-300 dark:text-slate-600">·</span>
-            <span className="tabular-nums">Profit {fmtR(totals.profit)}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                resetPage();
-              }}
-              className="h-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs text-slate-700 dark:text-slate-300 outline-none"
-              aria-label="Rows per page"
-            >
-              {PAGE_SIZES.map((s) => (
-                <option key={s} value={s}>
-                  {s} / page
-                </option>
-              ))}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-slate-500 dark:text-slate-400 tabular-nums">
+            {((page - 1) * pageSize + 1).toLocaleString()}&ndash;{Math.min(page * pageSize, filtered.length).toLocaleString()} of{" "}
+            {filtered.length.toLocaleString()} &middot; page {page} of {totalPages}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); resetPage(); }}
+              className="h-7 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 text-[11px] text-slate-700 dark:text-slate-300 outline-none"
+              aria-label="Rows per page">
+              {PAGE_SIZES.map((sz) => <option key={sz} value={sz}>{sz} / page</option>)}
             </select>
-            <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
-              <ChevronLeft size={15} />
+            <Button variant="secondary" size="xs" onClick={() => setPage((pg) => Math.max(1, pg - 1))} disabled={page === 1}>
+              <ChevronLeft size={13} />
             </Button>
-            <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums min-w-[52px] text-center">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              <ChevronRight size={15} />
+            <Button variant="secondary" size="xs" onClick={() => setPage((pg) => Math.min(totalPages, pg + 1))} disabled={page === totalPages}>
+              <ChevronRight size={13} />
             </Button>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** Plain heading for columns that are not sortable. */
+function Th({ children, align = "left" }) {
+  const alignCls = align === "right" ? "text-right" : "text-left";
+  return (
+    <th className={"px-2 py-2 " + alignCls + " text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-800 z-10 whitespace-nowrap"}>
+      {children}
+    </th>
+  );
+}
+
+function Stat({ label, value, sub, tone = "ink" }) {
+  return (
+    <div className="px-3.5 py-2.5 min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 truncate">{label}</p>
+      <p className={"mt-1 text-base font-semibold tabular-nums leading-none truncate " + text(tone)}>{value}</p>
+      {sub && <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500 truncate">{sub}</p>}
+    </div>
+  );
+}
+
+function FilterChip({ children, count, tone, active, onClick, title }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+      className={"inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold ring-1 ring-inset transition " + chip(tone) + (active ? " ring-2 ring-current shadow-sm" : " hover:brightness-95 dark:hover:brightness-110")}
+    >
+      {children}
+      <span className="tabular-nums opacity-75">{count.toLocaleString()}</span>
+    </button>
   );
 }

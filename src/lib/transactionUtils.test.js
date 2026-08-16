@@ -84,6 +84,42 @@ describe('transactionTotals', () => {
     expect(t.revenue).toBeCloseTo(85) // 100 + 25 - 50 + 10
     expect(t.profit).toBeCloseTo(25) // 40 + 5 - 20 (null ignored)
   })
+
+  it('derives cost, weighted margin and refunded value', () => {
+    const t = transactionTotals(rows)
+    expect(t.cost).toBeCloseTo(50) // (100-40) + (25-5) + (-50 - -20) = 60 + 20 - 30
+    // Weighted over the whole selection, not an average of row percentages.
+    expect(t.margin).toBeCloseTo((25 / 85) * 100)
+    expect(t.refunded).toBeCloseTo(50)
+    expect(t.items).toBe(4) // 2 + 1 + 1 from the three sales; the return is excluded
+  })
+})
+
+describe('enrichTransactions derived economics', () => {
+  it('computes cost and margin, and leaves both null without profit', () => {
+    expect(rows[0].cost).toBeCloseTo(60)
+    expect(rows[0].margin).toBeCloseTo(40)
+    expect(rows[3].cost).toBeNull() // no profit recorded on that row
+    expect(rows[3].margin).toBeNull()
+  })
+})
+
+describe('payment filter', () => {
+  it('filters to a single payment method', () => {
+    const paid = enrichTransactions(
+      [
+        { id: 1, product_id: 1, quantity_sold: 1, total_price: 10, payment_method: 'cash', timestamp: '2026-08-03T10:00:00Z' },
+        { id: 2, product_id: 1, quantity_sold: 1, total_price: 20, payment_method: 'card', timestamp: '2026-08-03T11:00:00Z' },
+        { id: 3, product_id: 1, quantity_sold: 1, total_price: 30, timestamp: '2026-08-03T12:00:00Z' },
+      ],
+      { products }
+    )
+    expect(filterTransactions(paid, { payment: 'cash' }).map((r) => r.id)).toEqual([1])
+    expect(filterTransactions(paid, { payment: 'card' }).map((r) => r.id)).toEqual([2])
+    // Rows predating payment tracking are their own bucket, never counted as either.
+    expect(filterTransactions(paid, { payment: 'unspecified' }).map((r) => r.id)).toEqual([3])
+    expect(filterTransactions(paid, { payment: 'all' })).toHaveLength(3)
+  })
 })
 
 describe('transactionsToCSV', () => {
@@ -95,7 +131,9 @@ describe('transactionsToCSV', () => {
     const csv = transactionsToCSV(withComma)
     const lines = csv.split('\r\n')
     expect(lines).toHaveLength(2)
-    expect(lines[0].startsWith('id,date,time,type,payment,product')).toBe(true)
+    expect(lines[0]).toBe(
+      'id,date,time,type,payment,product,sku,quantity,unit_price,total,cost,profit,margin_pct,customer,sold_by'
+    )
     expect(lines[1]).toContain('"Plug, 2-pin ""EU"""')
   })
 })

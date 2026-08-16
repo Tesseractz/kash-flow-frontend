@@ -15,6 +15,12 @@ export function enrichTransactions(sales, { products = [], customers = [], users
     const qty = Number(s.quantity_sold) || 0
     const total = Number(s.total_price) || 0
     const isReturn = qty < 0 || total < 0
+    const profit = s.profit != null ? Number(s.profit) : null
+    // Cost of goods is derived, not stored on the sale: the row records what
+    // was charged and what was earned, so the difference is what it cost us.
+    const cost = profit != null ? total - profit : null
+    // Margin is meaningless without revenue to divide by.
+    const margin = profit != null && total !== 0 ? (profit / total) * 100 : null
     return {
       id: s.id,
       timestamp: s.timestamp,
@@ -25,7 +31,9 @@ export function enrichTransactions(sales, { products = [], customers = [], users
       quantity: qty,
       unit_price: qty !== 0 ? Math.abs(total / qty) : Math.abs(total),
       total,
-      profit: s.profit != null ? Number(s.profit) : null,
+      cost,
+      profit,
+      margin,
       customer_name: customer?.name || '',
       sold_by_name: soldBy?.name || soldBy?.email || '',
       payment_method: s.payment_method || '',
@@ -39,13 +47,18 @@ export function enrichTransactions(sales, { products = [], customers = [], users
  * @param {object} f {q, from, to, type} — from/to are 'YYYY-MM-DD' local dates,
  *   type is 'all' | 'sale' | 'return'.
  */
-export function filterTransactions(rows, { q = '', from = '', to = '', type = 'all' } = {}) {
+export function filterTransactions(rows, { q = '', from = '', to = '', type = 'all', payment = 'all' } = {}) {
   const needle = q.trim().toLowerCase()
   const fromTs = from ? new Date(`${from}T00:00:00`) : null
   const toTs = to ? new Date(`${to}T23:59:59.999`) : null
 
   return rows.filter((r) => {
     if (type !== 'all' && r.type !== type) return false
+    if (payment !== 'all') {
+      // Sales taken before the payment method was recorded have no value, and
+      // must not silently count as either cash or card.
+      if (payment === 'unspecified' ? r.payment_method : r.payment_method !== payment) return false
+    }
     const t = new Date(r.timestamp)
     if (fromTs && (Number.isNaN(t.getTime()) || t < fromTs)) return false
     if (toTs && (Number.isNaN(t.getTime()) || t > toTs)) return false
@@ -81,15 +94,43 @@ export function sortTransactions(rows, key = 'timestamp', dir = 'desc') {
 export function transactionTotals(rows) {
   let revenue = 0
   let profit = 0
+  let cost = 0
+  let items = 0
   let saleCount = 0
   let returnCount = 0
+  let cashRevenue = 0
+  let cardRevenue = 0
+  let refunded = 0
   for (const r of rows) {
     revenue += r.total
     if (r.profit != null) profit += r.profit
-    if (r.type === 'return') returnCount += 1
-    else saleCount += 1
+    if (r.cost != null) cost += r.cost
+    if (r.type === 'return') {
+      returnCount += 1
+      refunded += Math.abs(r.total)
+    } else {
+      saleCount += 1
+      items += r.quantity
+    }
+    if (r.payment_method === 'cash') cashRevenue += r.total
+    else if (r.payment_method === 'card') cardRevenue += r.total
   }
-  return { count: rows.length, saleCount, returnCount, revenue, profit }
+  // Margin over the whole selection, not an average of per-row margins —
+  // averaging percentages would let a R5 sale weigh as much as a R5,000 one.
+  const margin = revenue !== 0 ? (profit / revenue) * 100 : null
+  return {
+    count: rows.length,
+    saleCount,
+    returnCount,
+    revenue,
+    profit,
+    cost,
+    margin,
+    items,
+    cashRevenue,
+    cardRevenue,
+    refunded,
+  }
 }
 
 function csvEscape(value) {
@@ -101,7 +142,7 @@ function csvEscape(value) {
 export function transactionsToCSV(rows) {
   const header = [
     'id', 'date', 'time', 'type', 'payment', 'product', 'sku', 'quantity',
-    'unit_price', 'total', 'profit', 'customer', 'sold_by',
+    'unit_price', 'total', 'cost', 'profit', 'margin_pct', 'customer', 'sold_by',
   ]
   const lines = [header.join(',')]
   for (const r of rows) {
@@ -118,7 +159,9 @@ export function transactionsToCSV(rows) {
       r.quantity,
       r.unit_price.toFixed(2),
       r.total.toFixed(2),
+      r.cost != null ? r.cost.toFixed(2) : '',
       r.profit != null ? r.profit.toFixed(2) : '',
+      r.margin != null ? r.margin.toFixed(1) : '',
       csvEscape(r.customer_name),
       csvEscape(r.sold_by_name),
     ].join(','))

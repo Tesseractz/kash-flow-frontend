@@ -5,6 +5,7 @@ import { AnalyticsAPI, AlertsAPI, ReportsAPI, PlanAPI, SalesAPI, UsersAPI } from
 import CashUpDialog from "../components/CashUpDialog";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { loadFromStorage, saveToStorage } from "../lib/offlineStorage";
+import { text, deltaTone, moneyTone, marginBand } from "../lib/tone";
 import {
   Card,
   CardContent,
@@ -330,37 +331,33 @@ function DeltaChip({ pct, invert = false }) {
     return <span className="text-[11px] text-slate-400 dark:text-slate-600">no prior data</span>;
   }
   const flat = Math.abs(pct) < 0.05;
-  // For most metrics up is good; for returns it is the opposite.
-  const good = invert ? pct < 0 : pct > 0;
-  const tone = flat
-    ? "text-slate-500 dark:text-slate-400"
-    : good
-    ? "text-accent-700 dark:text-accent-400"
-    : "text-rose-600 dark:text-rose-400";
   const arrow = flat ? "→" : pct > 0 ? "↑" : "↓";
   return (
-    <span className={`text-[11px] font-medium tabular-nums ${tone}`} title="vs the previous period of equal length">
+    <span
+      className={`text-[11px] font-medium tabular-nums ${text(deltaTone(pct, invert))}`}
+      title="vs the previous period of equal length"
+    >
       {arrow} {Math.abs(pct).toFixed(pct >= 100 ? 0 : 1)}%
     </span>
   );
 }
 
-function Metric({ label, value, sub, delta, invert, accent = false }) {
+function Metric({ label, value, sub, subTone, delta, invert, tone = "ink" }) {
   return (
     <div className="px-3.5 py-2.5 min-w-0">
       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 truncate">
         {label}
       </p>
-      <p
-        className={`mt-1 text-lg font-semibold tabular-nums leading-none truncate ${
-          accent ? "text-brand-700 dark:text-brand-300" : "text-slate-900 dark:text-white"
-        }`}
-      >
+      <p className={`mt-1 text-lg font-semibold tabular-nums leading-none truncate ${text(tone)}`}>
         {value}
       </p>
       <div className="mt-1 flex items-center gap-1.5 min-h-[15px]">
         {delta !== undefined ? <DeltaChip pct={delta} invert={invert} /> : null}
-        {sub && <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{sub}</span>}
+        {sub && (
+          <span className={`text-[11px] truncate ${subTone ? text(subTone) : "text-slate-400 dark:text-slate-500"}`}>
+            {sub}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -743,12 +740,14 @@ export default function Dashboard() {
               label={advanced ? `Revenue · ${days}d` : "Revenue today"}
               value={fmtR(kpis.revenue)}
               delta={pc ? delta(pc.cur.revenue, pc.prev.revenue) : undefined}
-              accent
+              tone="info"
             />
             <Metric
               label="Gross profit"
               value={fmtR(kpis.profit)}
+              tone={moneyTone(kpis.profit)}
               sub={`${(kpis.margin || 0).toFixed(1)}% margin`}
+              subTone={marginBand(kpis.margin)}
               delta={pc ? delta(pc.cur.profit, pc.prev.profit) : undefined}
             />
             <Metric
