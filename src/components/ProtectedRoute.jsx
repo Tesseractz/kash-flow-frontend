@@ -4,7 +4,7 @@ import { Lock } from 'lucide-react'
 import { Card, CardContent } from './ui/Card'
 
 export default function ProtectedRoute({ children, adminOnly = false }) {
-  const { isAuthenticated, loading, isAdmin } = useAuth()
+  const { isAuthenticated, loading, isAdmin, passwordRecovery } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -17,6 +17,14 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" state={{ from: location }} replace />
+  }
+
+  // A recovery link signs the user in before they have chosen a new password.
+  // Supabase sends them to the Site URL when the redirect is not allow-listed,
+  // so the link can land on any route — keep them on the reset form wherever
+  // they arrive, otherwise the reset silently turns into a login.
+  if (passwordRecovery) {
+    return <Navigate to="/auth" replace />
   }
 
   if (adminOnly && !isAdmin) {

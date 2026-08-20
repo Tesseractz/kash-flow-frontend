@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { supabase } from "../lib/supabase"
+import { supabase, authErrorInUrl, confirmedInUrl } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { Button } from "../components/ui/Button"
@@ -36,11 +36,12 @@ const MODE = {
 }
 
 export default function AuthPage() {
+  const { isAuthenticated, passwordRecovery, endPasswordRecovery } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [storeName, setStoreName] = useState("")
-  const [mode, setMode] = useState(MODE.SIGN_IN)
+  const [mode, setMode] = useState(() => (passwordRecovery ? MODE.RESET_PASSWORD : MODE.SIGN_IN))
   const [loading, setLoading] = useState(false)
 
   // Privacy consents
@@ -49,7 +50,6 @@ export default function AuthPage() {
   const [marketingOptIn, setMarketingOptIn] = useState(false)
 
   const { t } = useTranslation()
-  const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -57,28 +57,36 @@ export default function AuthPage() {
 
   const from = location.state?.from?.pathname || "/"
 
+  // supabase-js strips the URL fragment while it initialises, so the markers it
+  // carried are captured at import time in lib/supabase.js rather than read
+  // from window.location here.
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      const accessToken = hashParams.get("access_token")
-      const type = hashParams.get("type")
+    if (passwordRecovery) setMode(MODE.RESET_PASSWORD)
+  }, [passwordRecovery])
 
-      if (type === "recovery" && accessToken) {
-        setMode(MODE.RESET_PASSWORD)
-        return
-      }
-
-      if (type === "signup" || type === "email_change") {
-        toast.success("Email confirmed! You can now sign in.")
-        setMode(MODE.SIGN_IN)
-        window.history.replaceState(null, "", window.location.pathname)
-      }
-
-      const error = searchParams.get("error")
-      const errorDescription = searchParams.get("error_description")
-      if (error) toast.error(errorDescription || "Authentication error")
+  useEffect(() => {
+    if (confirmedInUrl) {
+      toast.success("Email confirmed! You can now sign in.")
+      setMode(MODE.SIGN_IN)
+      window.history.replaceState(null, "", window.location.pathname)
     }
-    handleAuthCallback()
+
+    if (authErrorInUrl) {
+      // Reset links are single-use and expire in an hour; say so instead of
+      // dropping the user on a sign-in form that looks like nothing happened.
+      const expired = authErrorInUrl.code === "otp_expired"
+      toast.error(
+        expired
+          ? "That password reset link has expired or was already used. Request a new one."
+          : authErrorInUrl.description || "Authentication error"
+      )
+      setMode(expired ? MODE.FORGOT_PASSWORD : MODE.SIGN_IN)
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+
+    const error = searchParams.get("error")
+    const errorDescription = searchParams.get("error_description")
+    if (error) toast.error(errorDescription || "Authentication error")
   }, [searchParams])
 
   useEffect(() => {
@@ -145,6 +153,9 @@ export default function AuthPage() {
     if (error) throw error
     toast.success("Password updated successfully!")
     window.history.replaceState(null, "", window.location.pathname)
+    // Release the reset screen before navigating, or ProtectedRoute bounces
+    // straight back to it.
+    endPasswordRecovery()
     setMode(MODE.SIGN_IN)
     setPassword("")
     setConfirmPassword("")

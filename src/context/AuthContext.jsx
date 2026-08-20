@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, recoveryInUrl } from '../lib/supabase'
 import { ProfileAPI } from '../api/client'
 
 const AuthContext = createContext(null)
@@ -10,6 +10,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(false)
+  // True from the first render when the page was opened from a password
+  // recovery link. A recovery link also creates a real session, so without
+  // this flag the app cannot tell 'reset your password' apart from a normal
+  // sign-in and just drops the user on the dashboard.
+  const [passwordRecovery, setPasswordRecovery] = useState(recoveryInUrl)
 
   const fetchProfile = async (currentSession = null) => {
     const sessionToUse = currentSession || session
@@ -82,6 +87,9 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
         console.log('[AuthContext] Auth state changed:', { event: _event, hasSession: !!session, hasUser: !!session?.user })
+        // Backstop for the case where the fragment was already gone by the
+        // time this module loaded: supabase-js announces recovery itself.
+        if (_event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)  // Always set loading to false
@@ -106,7 +114,12 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Called once the new password has actually been saved, so the app stops
+  // holding the user on the reset screen.
+  const endPasswordRecovery = () => setPasswordRecovery(false)
+
   const signOut = async () => {
+    setPasswordRecovery(false)
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)
@@ -124,6 +137,8 @@ export function AuthProvider({ children }) {
     signOut,
     isAuthenticated: !!user,
     refreshProfile: fetchProfile,
+    passwordRecovery,
+    endPasswordRecovery,
   }
 
   return (

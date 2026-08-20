@@ -19,6 +19,7 @@ import {
   ArrowRightLeft,
 } from "lucide-react";
 import { useAuth } from "./context/AuthContext";
+import { usePlan } from "./hooks/usePlan";
 import { useTheme } from "./context/ThemeContext";
 import { Button } from "./components/ui/Button";
 import { useState, useRef, useEffect } from "react";
@@ -29,8 +30,6 @@ import NotificationsBell from "./components/NotificationsBell";
 import InfoStrip from "./components/InfoStrip";
 import PushNotificationBanner from "./components/PushNotificationBanner";
 import CookieConsent from "./components/CookieConsent";
-import { useQuery } from "@tanstack/react-query";
-import { PlanAPI } from "./api/client";
 
 const navItems = [
   { to: "/sell", icon: ShoppingCart, labelKey: "nav.sell", adminOnly: false },
@@ -179,12 +178,7 @@ function Sidebar({ mobile, onClose }) {
   const { t } = useTranslation();
   const { isAdmin } = useAuth();
 
-  const planQuery = useQuery({
-    queryKey: ["plan"],
-    queryFn: () => PlanAPI.get(),
-    staleTime: 30000,
-  });
-  const isSubscribedOrTrial = !!(planQuery.data?.is_active || planQuery.data?.is_on_trial);
+  const { isSubscribedOrTrial } = usePlan();
 
   const visibleNavItems = navItems
     .filter(item => !item.adminOnly || isAdmin)
@@ -335,12 +329,7 @@ function MobileTabBar({ onMore }) {
   const location = useLocation();
   const { t } = useTranslation();
   const { isAdmin } = useAuth();
-  const planQuery = useQuery({
-    queryKey: ["plan"],
-    queryFn: () => PlanAPI.get(),
-    staleTime: 30000,
-  });
-  const isSubscribedOrTrial = !!(planQuery.data?.is_active || planQuery.data?.is_on_trial);
+  const { isSubscribedOrTrial } = usePlan();
 
   const tabs = [
     { to: "/sell", icon: ShoppingCart, label: t("nav.sell"), adminOnly: false },
