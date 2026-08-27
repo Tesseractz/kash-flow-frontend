@@ -24,6 +24,18 @@ describe('usePlan', () => {
     window.localStorage.clear()
   })
 
+  it('never locks features on a remembered "no" — only on a fresh one', async () => {
+    // The cache outlives the fact it recorded. A store that was expired earlier
+    // today and has since paid must not render locked on every load until the
+    // request returns; that gap is the delay users complain about.
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...EXPIRED, cachedAt: 1 }))
+    PlanAPI.get.mockReturnValue(new Promise(() => {}))
+
+    const { result } = renderHook(() => usePlan(), { wrapper })
+
+    expect(result.current.isSubscribedOrTrial).toBe(true)
+  })
+
   it('renders a remembered subscription immediately, with no request answered yet', () => {
     // The bug this exists to prevent: a paying customer refreshes and watches
     // Dashboard, Transactions, Customers and Team vanish until /plan returns.
@@ -49,7 +61,7 @@ describe('usePlan', () => {
   })
 
   it('keeps features unlocked when the server cannot be reached', async () => {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...PRO, cachedAt: 1 }))
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...EXPIRED, cachedAt: 1 }))
     PlanAPI.get.mockRejectedValue(new Error('Network Error'))
 
     const { result } = renderHook(() => usePlan(), { wrapper })

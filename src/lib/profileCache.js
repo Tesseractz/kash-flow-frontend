@@ -40,6 +40,8 @@ export function writeCachedProfile(userId, profile) {
 export function clearCachedProfile() {
   try {
     window.localStorage.removeItem(KEY)
+    // The remembered plan belongs to the account that just signed out.
+    window.localStorage.removeItem('kashpoint.plan.v1')
   } catch {
     /* ignore */
   }

@@ -65,12 +65,17 @@ export function usePlan() {
     if (plan && !query.isError) writeCachedPlan(plan)
   }, [plan, query.isError])
 
+  // Only a fresh answer, fetched during this mount, may take features away.
+  // A remembered plan can grant access instantly, but it must never withhold
+  // it: the cache outlives the fact it recorded, so a store that was expired
+  // an hour ago and has since paid would otherwise render locked on every load
+  // until the request came back — which is the delay users actually notice.
+  const answered = query.isFetchedAfterMount && !query.isError
+
   return {
     ...query,
     plan,
-    // No cached answer and no response yet: assume entitled. Showing a nav item
-    // that turns out to be paywalled is a far smaller failure than hiding one
-    // the customer has already paid for, and the pages gate themselves anyway.
-    isSubscribedOrTrial: plan ? !!(plan.is_active || plan.is_on_trial) : true,
+    isSubscribedOrTrial:
+      answered && plan ? !!(plan.is_active || plan.is_on_trial) : true,
   }
 }
