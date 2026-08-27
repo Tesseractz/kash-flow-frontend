@@ -76,6 +76,10 @@ export default {
       backgroundImage: {
         // Subtle gradients for hero surfaces — used sparingly.
         'brand-gradient':  'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
+        // Deep ink for the sign-in panel. A saturated blue slab reads as a
+        // template; ink with a single restrained green lift matches the
+        // KashPoint mark, which is green — not blue.
+        'ink-gradient':    'linear-gradient(155deg, #0b1220 0%, #101d31 48%, #052e24 100%)',
         'accent-gradient': 'linear-gradient(135deg, #059669 0%, #14b8a6 100%)',
         'warm-gradient':   'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
         'mesh-light':      'radial-gradient(at 30% 0%, rgb(219 234 254 / 0.6) 0px, transparent 50%), radial-gradient(at 100% 0%, rgb(209 250 229 / 0.4) 0px, transparent 50%)',

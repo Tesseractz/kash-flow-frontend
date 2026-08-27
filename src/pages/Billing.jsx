@@ -12,7 +12,7 @@ import { Badge } from '../components/ui/Badge'
 
 const plan = {
   name: 'Pro',
-  price: 'R190',
+  price: 'R150',
   period: '/month',
   description: 'Everything unlocked for your store',
   icon: Zap,

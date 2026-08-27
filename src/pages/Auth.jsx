@@ -19,7 +19,6 @@ import {
   ArrowLeft,
   CheckCircle,
   KeyRound,
-  Sparkles,
   ShieldCheck,
   Smartphone,
   TrendingUp,
@@ -190,39 +189,57 @@ export default function AuthPage() {
       <ThemeToggleButton theme={theme} toggleTheme={toggleTheme} />
 
       {/* Left brand panel — only visible on lg+ */}
-      <aside className="hidden lg:flex relative flex-1 items-center justify-center bg-brand-gradient text-white overflow-hidden">
-        {/* Decorative blurred orbs */}
-        <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-accent-400/30 blur-3xl" />
-        <div className="pointer-events-none absolute inset-0 opacity-20"
-             style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+      <aside className="hidden lg:flex relative flex-1 items-center justify-center bg-ink-gradient text-white overflow-hidden">
+        {/* One restrained glow, low and off-centre. The previous panel stacked
+            three blurred orbs over a saturated blue slab, which is the look of
+            a template rather than a payments product. */}
+        <div className="pointer-events-none absolute -bottom-40 -right-24 w-[34rem] h-[34rem] rounded-full bg-accent-500/10 blur-3xl" />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+          }}
+        />
 
         <div className="relative max-w-md px-12 py-16 z-10 animate-fade-in">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 ring-1 ring-white/20 px-3 py-1.5 backdrop-blur text-xs font-medium uppercase tracking-wider mb-8">
-            <Sparkles size={14} />
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] ring-1 ring-white/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-300 mb-9">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-400" />
             One plan. Full access.
           </div>
-          <h2 className="font-display text-4xl xl:text-5xl font-bold leading-tight tracking-tight">
-            Sell anywhere.<br />
-            <span className="text-accent-200">Sync everywhere.</span>
+          <h2 className="font-display text-4xl xl:text-[2.9rem] font-semibold leading-[1.12] tracking-tight">
+            Every sale, every till,
+            <br />
+            <span className="text-accent-400">one set of numbers.</span>
           </h2>
-          <p className="mt-5 text-blue-100/90 text-lg leading-relaxed">
-            KashPoint runs in your browser, on the desktop, and in your pocket — with offline mode for the moments your Wi-Fi gives up.
+          <p className="mt-5 text-slate-400 text-[15px] leading-relaxed">
+            KashPoint runs in the browser, on the desktop and in your pocket —
+            with offline mode for the moments your connection gives up.
           </p>
-          <ul className="mt-10 space-y-4">
+
+          <dl className="mt-11 grid grid-cols-3 gap-6 border-t border-white/10 pt-7">
             {[
-              { icon: TrendingUp, label: "Live profit & sales reports", sub: "Know your numbers without a spreadsheet" },
-              { icon: Smartphone, label: "Works on phones, tablets, laptops", sub: "Same data, every device, in real time" },
-              { icon: ShieldCheck, label: "Built for trust", sub: "PCI-conscious billing through Paystack" },
-            ].map(({ icon: Icon, label, sub }) => (
-              <li key={label} className="flex items-start gap-3.5">
-                <div className="flex-shrink-0 mt-0.5 w-9 h-9 rounded-xl bg-white/15 backdrop-blur ring-1 ring-white/20 flex items-center justify-center">
-                  <Icon size={18} />
-                </div>
-                <div>
-                  <p className="font-medium">{label}</p>
-                  <p className="text-sm text-blue-100/75">{sub}</p>
-                </div>
+              { value: "R150", label: "per month" },
+              { value: "30 days", label: "free trial" },
+              { value: "Offline", label: "ready" },
+            ].map(({ value, label }) => (
+              <div key={label}>
+                <dt className="font-display text-xl font-semibold tracking-tight text-white">{value}</dt>
+                <dd className="mt-0.5 text-[11px] uppercase tracking-[0.1em] text-slate-500">{label}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <ul className="mt-9 space-y-3.5">
+            {[
+              { icon: TrendingUp, label: "Live profit on every sale" },
+              { icon: Smartphone, label: "Same data on every device" },
+              { icon: ShieldCheck, label: "Card billing through Paystack" },
+            ].map(({ icon: Icon, label }) => (
+              <li key={label} className="flex items-center gap-3 text-sm text-slate-300">
+                <Icon size={16} className="flex-shrink-0 text-accent-400" strokeWidth={2} />
+                {label}
               </li>
             ))}
           </ul>
@@ -285,7 +302,7 @@ export default function AuthPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     autoComplete="new-password"
                   />
-                  <Button type="submit" disabled={loading} className="w-full" size="lg">
+                  <Button type="submit" variant="accent" disabled={loading} className="w-full" size="lg">
                     {loading ? t("loading") : (<>{t("auth.update_password")}<CheckCircle size={18} /></>)}
                   </Button>
                 </form>
@@ -306,7 +323,7 @@ export default function AuthPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
                   />
-                  <Button type="submit" disabled={loading} className="w-full" size="lg">
+                  <Button type="submit" variant="accent" disabled={loading} className="w-full" size="lg">
                     {loading ? t("loading") : (<>{t("auth.send_reset_link")}<ArrowRight size={18} /></>)}
                   </Button>
                 </form>
@@ -314,7 +331,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     onClick={() => setMode(MODE.SIGN_IN)}
-                    className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium inline-flex items-center gap-1"
+                    className="text-sm text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 font-medium inline-flex items-center gap-1"
                   >
                     <ArrowLeft size={16} />
                     {t("auth.back_to_signin")}
@@ -358,7 +375,7 @@ export default function AuthPage() {
                         <button
                           type="button"
                           onClick={() => setMode(MODE.FORGOT_PASSWORD)}
-                          className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium"
+                          className="text-xs text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 font-medium"
                         >
                           {t("auth.forgot_password")}
                         </button>
@@ -390,11 +407,11 @@ export default function AuthPage() {
                     <div className="space-y-2.5 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                       <ConsentCheckbox id="terms" checked={termsAccepted} onChange={setTermsAccepted} required>
                         I agree to the{" "}
-                        <a href="/terms" target="_blank" rel="noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline">Terms of Service</a>
+                        <a href="/terms" target="_blank" rel="noreferrer" className="text-accent-600 dark:text-accent-400 hover:underline">Terms of Service</a>
                       </ConsentCheckbox>
                       <ConsentCheckbox id="privacy" checked={privacyAccepted} onChange={setPrivacyAccepted} required>
                         I have read and accept the{" "}
-                        <a href="/privacy" target="_blank" rel="noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline">Privacy Policy</a>
+                        <a href="/privacy" target="_blank" rel="noreferrer" className="text-accent-600 dark:text-accent-400 hover:underline">Privacy Policy</a>
                       </ConsentCheckbox>
                       <ConsentCheckbox id="marketing" checked={marketingOptIn} onChange={setMarketingOptIn}>
                         Send me product updates and tips (optional)
@@ -402,7 +419,7 @@ export default function AuthPage() {
                     </div>
                   )}
 
-                  <Button type="submit" disabled={loading} className="w-full" size="lg">
+                  <Button type="submit" variant="accent" disabled={loading} className="w-full" size="lg">
                     {loading ? t("loading") : (<>
                       {mode === MODE.SIGN_UP ? t("auth.sign_up") : t("auth.sign_in")}
                       <ArrowRight size={18} />
@@ -421,7 +438,7 @@ export default function AuthPage() {
                     className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                   >
                     {mode === MODE.SIGN_UP ? t("auth.have_account") : t("auth.no_account")}{" "}
-                    <span className="text-brand-600 dark:text-brand-400 font-medium">
+                    <span className="text-accent-600 dark:text-accent-400 font-medium">
                       {mode === MODE.SIGN_UP ? t("auth.sign_in") : t("auth.sign_up")}
                     </span>
                   </button>
@@ -506,7 +523,7 @@ function ConsentCheckbox({ id, checked, onChange, required, children }) {
         />
         <span className={`block w-4 h-4 rounded border transition-all
           border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800
-          peer-checked:bg-brand-600 peer-checked:border-brand-600
+          peer-checked:bg-accent-600 peer-checked:border-accent-600
           group-hover:border-slate-400 dark:group-hover:border-slate-500
         `} />
         <CheckCircle size={12} className="absolute inset-0 m-auto text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
@@ -522,7 +539,7 @@ function ConsentCheckbox({ id, checked, onChange, required, children }) {
 function SuccessCard({ icon: Icon, tone, title, body, onBack, backLabel }) {
   const toneStyles = tone === "accent"
     ? "bg-accent-50 text-accent-600 dark:bg-accent-950/50 dark:text-accent-300"
-    : "bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-300"
+    : "bg-accent-50 text-accent-600 dark:bg-accent-950/50 dark:text-accent-300"
   return (
     <Card>
       <CardContent className="p-8 text-center">

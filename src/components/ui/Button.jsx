@@ -25,6 +25,13 @@ const variants = {
   success:
     'text-white bg-accent-600 hover:bg-accent-700 active:bg-accent-800 ' +
     'shadow-accent hover:shadow-soft-lg focus-visible:ring-accent-500',
+  // The KashPoint mark and the landing page are green; `primary` is blue.
+  // Public surfaces (sign-in, sign-up) use this so the first screen a customer
+  // sees matches the brand they just clicked through from. Same paint as
+  // `success`, different meaning — this is a call to action, not an outcome.
+  accent:
+    'text-white bg-accent-600 hover:bg-accent-700 active:bg-accent-800 ' +
+    'shadow-accent hover:shadow-soft-lg focus-visible:ring-accent-500',
   danger:
     'text-white bg-red-600 hover:bg-red-700 active:bg-red-800 ' +
     'shadow-danger hover:shadow-soft-lg focus-visible:ring-red-500',

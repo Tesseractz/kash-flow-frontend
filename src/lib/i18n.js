@@ -185,7 +185,7 @@ const en = {
       },
       pro: {
         name: 'Pro',
-        price: 'R190',
+        price: 'R150',
         period: '/month',
         description: 'For growing businesses',
         features: [
