@@ -1,6 +1,16 @@
 Options -MultiViews
 RewriteEngine On
 
+# A missing file under /assets/ must 404 rather than fall through to the SPA.
+# Hashed chunks are requested by <script type="module">, and answering a .js
+# request with index.html makes the browser fail with "Failed to fetch
+# dynamically imported module" — a message that says nothing about the real
+# cause. This happens whenever a browser holds a previous build's index.html and
+# asks for chunk names that no longer exist on disk.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_URI} ^/assets/
+RewriteRule ^ - [L,R=404]
+
 # Serve existing assets normally and send client-side routes to the SPA.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

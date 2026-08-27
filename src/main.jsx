@@ -9,6 +9,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import App from './App'
 import ProtectedRoute from './components/ProtectedRoute'
+import RouteError from './components/RouteError'
 
 // The till and the product list load with the app: a cashier must never wait
 // for a chunk to download mid-sale, and this is often a phone on mobile data.
@@ -63,6 +64,11 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+    // Catches the "failed to fetch dynamically imported module" a browser
+    // throws when it is still running a previous build's index.html and asks
+    // for chunk names that no longer exist. Reloads into the current build
+    // instead of leaving the user on a dead end.
+    errorElement: <RouteError />,
     children: [
       { 
         path: "/",
