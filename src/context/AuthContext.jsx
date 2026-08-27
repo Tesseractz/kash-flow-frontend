@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, recoveryInUrl } from '../lib/supabase'
 import { ProfileAPI } from '../api/client'
+import { readCachedProfile, writeCachedProfile, clearCachedProfile } from '../lib/profileCache'
 
 const AuthContext = createContext(null)
 
@@ -39,6 +40,7 @@ export function AuthProvider({ children }) {
       
       console.log('[AuthContext] Profile fetched:', data)
       setProfile(data)
+      if (sessionToUse.user?.id) writeCachedProfile(sessionToUse.user.id, data)
     } catch (error) {
       console.error('[AuthContext] Failed to fetch profile:', error)
       console.error('[AuthContext] Error details:', {
@@ -69,6 +71,10 @@ export function AuthProvider({ children }) {
         
         if (session?.user) {
           console.log('[AuthContext] User found, fetching profile...')
+          // Render with the role this device last saw for THIS user, so an
+          // owner is not shown a cashier's navigation while the request runs.
+          const remembered = readCachedProfile(session.user.id)
+          if (remembered) setProfile(remembered)
           // Fetch profile in background - don't await, don't block
           fetchProfile(session).catch(err => {
             console.error('[AuthContext] Background profile fetch failed:', err)
@@ -95,6 +101,8 @@ export function AuthProvider({ children }) {
         setLoading(false)  // Always set loading to false
         if (session?.user) {
           console.log('[AuthContext] User in state change, fetching profile...')
+          const remembered = readCachedProfile(session.user.id)
+          if (remembered) setProfile(remembered)
           // Fetch profile in background
           fetchProfile(session).catch(err => {
             console.error('[AuthContext] Background profile fetch failed:', err)
@@ -120,6 +128,7 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     setPasswordRecovery(false)
+    clearCachedProfile()
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)
