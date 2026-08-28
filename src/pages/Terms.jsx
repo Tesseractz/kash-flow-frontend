@@ -62,7 +62,9 @@ KashPoint is a point-of-sale (POS) software solution that enables businesses to 
             <h2>5. Payment Terms</h2>
             <ul>
               <li>Subscription fees are billed in advance on a monthly basis</li>
-              <li>All payments are non-refundable unless otherwise specified</li>
+              <li>You may cancel at any time; access continues to the end of the period already
+                paid for. Refunds are handled under our <a href="/refund-policy">Refund &amp;
+                Cancellation Policy</a></li>
               <li>We reserve the right to modify pricing with 30 days notice</li>
               <li>Failure to pay may result in suspension of services</li>
             </ul>
@@ -112,9 +114,11 @@ KashPoint is a point-of-sale (POS) software solution that enables businesses to 
             <p>
               For questions about these Terms, please contact us at:
               <br />
-              <strong>Email:</strong> legal@kashpoint.com
+              <strong>Email:</strong> support@kashpoint.co.za
               <br />
-              <strong>Address:</strong> [Your Business Address]
+              <strong>WhatsApp:</strong> 061 412 1089
+              <br />
+              <strong>Address:</strong> Johannesburg, South Africa
             </p>
           </CardContent>
         </Card>

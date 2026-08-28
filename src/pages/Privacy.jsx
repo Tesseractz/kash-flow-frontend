@@ -100,7 +100,7 @@ export default function Privacy() {
             </ul>
             <p>
               To exercise these rights, visit Settings → Privacy & Security or contact us at 
-              privacy@kashpoint.com.
+              support@kashpoint.co.za.
             </p>
 
             <h2>7. Cookies</h2>
@@ -138,9 +138,9 @@ export default function Privacy() {
               For questions about this Privacy Policy or our data practices:
             </p>
             <ul>
-              <li><strong>Email:</strong> privacy@kashpoint.com</li>
-              <li><strong>Information Officer:</strong> [Name], io@kashpoint.com</li>
-              <li><strong>Address:</strong> [Your Business Address]</li>
+              <li><strong>Email:</strong> support@kashpoint.co.za</li>
+              <li><strong>Information Officer:</strong> Robel Berhanu, support@kashpoint.co.za</li>
+              <li><strong>Address:</strong> Johannesburg, South Africa</li>
             </ul>
 
             <h2>12. Regulatory Authority</h2>

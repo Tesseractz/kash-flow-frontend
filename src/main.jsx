@@ -29,6 +29,7 @@ const Expenses = React.lazy(() => import('./pages/Expenses'))
 const PrivacySettings = React.lazy(() => import('./pages/PrivacySettings'))
 const Terms = React.lazy(() => import('./pages/Terms'))
 const Privacy = React.lazy(() => import('./pages/Privacy'))
+const RefundPolicy = React.lazy(() => import('./pages/RefundPolicy'))
 
 function PageLoading() {
   return (
@@ -170,6 +171,10 @@ const router = createBrowserRouter([
       {
         path: "/terms",
         element: page(<Terms />),
+      },
+      {
+        path: "/refund-policy",
+        element: page(<RefundPolicy />),
       },
       {
         path: "/privacy",
