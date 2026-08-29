@@ -57,6 +57,10 @@ export default {
           700: '#047857',
           800: '#065f46',
           900: '#064e3b',
+          // Row tints reference accent-950 in dark mode. Without this shade the
+          // dark: classes compile to nothing and the light tint paints over the
+          // dark background — the washed-out white rows bug.
+          950: '#022c22',
         },
       },
       // Layered shadows that read as depth rather than flat fills.
